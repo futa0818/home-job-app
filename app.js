@@ -4,11 +4,25 @@
 let currentRole = null; // 'child' or 'parent'
 let currentTab = 'main'; // 'main', 'report', 'settings'
 
+// 1. 初期のお手伝いメニュー設定 (10個)
+let availableJobs = [
+    { title: '風呂洗い', price: 50, icon: 'fa-bath' },
+    { title: '洗濯物たたみ', price: 50, icon: 'fa-shirt' },
+    { title: '洗濯物干し', price: 50, icon: 'fa-socks' },
+    { title: '靴並べ・チェーン', price: 30, icon: 'fa-shoe-prints' },
+    { title: '家庭教師', price: 300, icon: 'fa-graduation-cap' },
+    { title: '食器洗い', price: 50, icon: 'fa-utensils' },
+    { title: '米を炊く', price: 30, icon: 'fa-bowl-rice' },
+    { title: '米をつぎ分ける', price: 30, icon: 'fa-spoon' },
+    { title: '食器だし', price: 30, icon: 'fa-kitchen-set' },
+    { title: '玄関はわき', price: 50, icon: 'fa-broom' }
+];
+
 // 模擬データ
 let totalAmount = 0;
 let confirmedHistory = [];
 let pendingRequests = [
-    { id: 1, title: 'お皿洗い', price: 100, icon: 'fa-utensils', time: '10分前' }
+    { id: 1, title: '風呂洗い', price: 50, icon: 'fa-bath', time: '10分前' }
 ];
 let pendingProposals = [
     { id: 1, title: '洗車をする', price: 500, time: '昨日' }
@@ -43,21 +57,17 @@ function logout() {
 function switchTab(tabName) {
     currentTab = tabName;
     
-    // タブコンテンツの全非表示
     document.getElementById('tab-child-main').classList.add('hidden');
     document.getElementById('tab-parent-main').classList.add('hidden');
     document.getElementById('tab-report').classList.add('hidden');
     document.getElementById('tab-settings').classList.add('hidden');
     
-    // ナビゲーションのスタイルリセット
     ['main', 'report', 'settings'].forEach(t => {
         document.getElementById(`nav-${t}`).className = "text-slate-400 hover:text-white px-3 py-1.5 rounded-xl text-sm font-medium transition";
     });
 
-    // アクティブなタブのハイライト
     document.getElementById(`nav-${tabName}`).className = "bg-slate-800 text-white px-3 py-1.5 rounded-xl text-sm font-medium transition";
 
-    // コンテンツの表示出し分け
     if (tabName === 'main') {
         if (currentRole === 'child') {
             document.getElementById('tab-child-main').classList.remove('hidden');
@@ -165,6 +175,7 @@ function handleRequest(id, isApproved) {
     }
 }
 
+// 【機能強化】新メニューの提案審査処理
 function handleProposal(id, isApproved) {
     const index = pendingProposals.findIndex(p => p.id === id);
     if (index !== -1) {
@@ -172,8 +183,15 @@ function handleProposal(id, isApproved) {
         pendingProposals.splice(index, 1);
         
         if (isApproved) {
-            showToast(`提案「${prop.title}」を採用しました！メニューに追加されます（デモ）`);
+            // 採用（許可）された場合、一覧データ(availableJobs)に動的追加
+            availableJobs.push({
+                title: prop.title,
+                price: prop.price,
+                icon: 'fa-star' // 新メニューは区別しやすいよう「星アイコン」を自動付与
+            });
+            showToast(`提案「${prop.title}」を採用しました！お手伝いリストに追加されました。`);
         } else {
+            // 拒否された場合は追加せずメッセージのみ表示
             showToast(`提案「${prop.title}」を見送りました。`);
         }
         updateUI();
@@ -186,6 +204,20 @@ function updateUI() {
     document.getElementById('child-total-amount').innerText = `¥${totalAmount.toLocaleString()}`;
     document.getElementById('report-total-amount').innerText = `¥${totalAmount.toLocaleString()}`;
     document.getElementById('report-total-count').innerText = `${confirmedHistory.length}回`;
+
+    // 0. 子のお手伝い申請カード一覧の生成
+    const jobListContainer = document.getElementById('job-list-container');
+    if (jobListContainer) {
+        jobListContainer.innerHTML = availableJobs.map(job => `
+            <button onclick="requestJob('${job.title}', ${job.price}, '${job.icon}')" class="bg-slate-900 hover:bg-slate-800 border border-slate-800 hover:border-indigo-500/50 p-5 rounded-2xl flex flex-col items-center justify-center text-center transition group active:scale-95">
+                <div class="w-12 h-12 rounded-xl bg-slate-800 group-hover:bg-indigo-600/10 text-slate-300 group-hover:text-indigo-400 flex items-center justify-center text-xl mb-3 transition">
+                    <i class="fa-solid ${job.icon}"></i>
+                </div>
+                <span class="font-medium text-sm text-slate-200 mb-1">${job.title}</span>
+                <span class="text-xs font-bold text-indigo-400">¥${job.price}</span>
+            </button>
+        `).join('');
+    }
 
     // 1. 子の履歴アコーディオンの中身
     const childHistoryList = document.getElementById('child-history-list');
