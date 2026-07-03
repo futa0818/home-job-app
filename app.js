@@ -4,6 +4,10 @@
 let currentRole = null; // 'child' or 'parent'
 let currentTab = 'main'; // 'main', 'report', 'settings'
 
+// 本日完了したお手伝いのタイトルを保持する配列 (0時リセット用)
+let completedToday = [];
+let lastActiveDate = ""; // 日付リセット判定用
+
 // 1. 初期のお手伝いメニュー設定 (10個)
 let availableJobs = [
     { title: '風呂洗い', price: 50, icon: 'fa-bath' },
@@ -21,12 +25,48 @@ let availableJobs = [
 // 模擬データ
 let totalAmount = 0;
 let confirmedHistory = [];
-let pendingRequests = [
-    { id: 1, title: '風呂洗い', price: 50, icon: 'fa-bath', time: '10分前' }
-];
-let pendingProposals = [
-    { id: 1, title: '洗車をする', price: 500, time: '昨日' }
-];
+let pendingRequests = [];
+let pendingProposals = [];
+
+// --- リアルタイム時計機能 (JST) ---
+function updateClock() {
+    const now = new Date();
+    // 日本時間 (JST) での文字列表現を取得
+    const jstString = now.toLocaleString("en-US", { timeZone: "Asia/Tokyo" });
+    const jstDate = new Date(jstString);
+
+    const year = jstDate.getFullYear();
+    const month = jstDate.getMonth() + 1;
+    const date = jstDate.getDate();
+    const days = ['Sun', 'Mon', 'Tue', 'Wed', 'Thur', 'Fri', 'Sat'];
+    const dayStr = days[jstDate.getDay()];
+    const hours = String(jstDate.getHours()).padStart(2, '0');
+    const minutes = String(jstDate.getMinutes()).padStart(2, '0');
+
+    // 指定されたフォーマット: 2026 / 7 / 2 (Thur) 11:50
+    const timeString = `${year} / ${month} / ${date} (${dayStr}) ${hours}:${minutes}`;
+
+    // 時計要素の更新
+    const clockEl = document.getElementById('realtime-clock');
+    const clockMobileEl = document.getElementById('realtime-clock-mobile');
+    if(clockEl) clockEl.innerText = timeString;
+    if(clockMobileEl) clockMobileEl.innerText = timeString;
+
+    // 0時(日付変更)を跨いだ場合の自動リセット処理
+    const currentDateStr = `${year}/${month}/${date}`;
+    if (!lastActiveDate) {
+        lastActiveDate = currentDateStr; // 初回起動時の記録
+    } else if (lastActiveDate !== currentDateStr) {
+        lastActiveDate = currentDateStr; // 日付を更新
+        completedToday = []; // 完了済みリストをクリアして再利用可能にする
+        if (currentRole === 'child') {
+            updateUI(); // 画面を更新して完了済みを元に戻す
+        }
+    }
+}
+// 時計の初期化と1秒毎の自動更新
+updateClock();
+setInterval(updateClock, 1000);
 
 // --- 画面初期化・切り替え ---
 function loginAs(role) {
@@ -34,14 +74,13 @@ function loginAs(role) {
     document.getElementById('screen-login').classList.add('hidden');
     document.getElementById('app-layout').classList.remove('hidden');
     
-    // ロールに応じたバッジと画面表示
     const badge = document.getElementById('role-badge');
     if (role === 'child') {
         badge.innerText = '子モード';
-        badge.className = 'text-xs px-2.5 py-1 rounded-full font-medium bg-indigo-500/10 text-indigo-400 border border-indigo-500/20';
+        badge.className = 'text-xs px-2.5 py-1 rounded-full font-medium bg-indigo-500/10 text-indigo-400 border border-indigo-500/20 hidden sm:inline-block';
     } else {
         badge.innerText = '親モード';
-        badge.className = 'text-xs px-2.5 py-1 rounded-full font-medium bg-emerald-500/10 text-emerald-400 border border-emerald-500/20';
+        badge.className = 'text-xs px-2.5 py-1 rounded-full font-medium bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 hidden sm:inline-block';
     }
     
     switchTab('main');
@@ -117,6 +156,10 @@ function showToast(message) {
 
 // --- 子のアクション ---
 function requestJob(title, price, icon) {
+    // 既に本日完了済みの場合は処理しない
+    if (completedToday.includes(title)) return;
+
+    // 申請データを追加
     const newRequest = {
         id: Date.now(),
         title: title,
@@ -125,8 +168,12 @@ function requestJob(title, price, icon) {
         time: 'たった今'
     };
     pendingRequests.unshift(newRequest);
+    
+    // 本日完了済みとしてタイトルを記録 (ボタン無効化のため)
+    completedToday.push(title);
+    
     showToast(`「${title}」の実行を親に申請しました！`);
-    updateUI();
+    updateUI(); // 画面を更新し、押したボタンを完了済みセクションへ移動
 }
 
 function submitProposal() {
@@ -175,7 +222,6 @@ function handleRequest(id, isApproved) {
     }
 }
 
-// 【機能強化】新メニューの提案審査処理
 function handleProposal(id, isApproved) {
     const index = pendingProposals.findIndex(p => p.id === id);
     if (index !== -1) {
@@ -183,15 +229,13 @@ function handleProposal(id, isApproved) {
         pendingProposals.splice(index, 1);
         
         if (isApproved) {
-            // 採用（許可）された場合、一覧データ(availableJobs)に動的追加
             availableJobs.push({
                 title: prop.title,
                 price: prop.price,
-                icon: 'fa-star' // 新メニューは区別しやすいよう「星アイコン」を自動付与
+                icon: 'fa-star' 
             });
             showToast(`提案「${prop.title}」を採用しました！お手伝いリストに追加されました。`);
         } else {
-            // 拒否された場合は追加せずメッセージのみ表示
             showToast(`提案「${prop.title}」を見送りました。`);
         }
         updateUI();
@@ -200,15 +244,18 @@ function handleProposal(id, isApproved) {
 
 // --- UIの動的更新レンダリング ---
 function updateUI() {
-    // 金額表示の同期
     document.getElementById('child-total-amount').innerText = `¥${totalAmount.toLocaleString()}`;
     document.getElementById('report-total-amount').innerText = `¥${totalAmount.toLocaleString()}`;
     document.getElementById('report-total-count').innerText = `${confirmedHistory.length}回`;
 
-    // 0. 子のお手伝い申請カード一覧の生成
+    // 0. お手伝い申請カードの仕分け (本日の未実施 / 実施済み)
+    const activeJobs = availableJobs.filter(job => !completedToday.includes(job.title));
+    const completedJobs = availableJobs.filter(job => completedToday.includes(job.title));
+
+    // 未実施のカード生成
     const jobListContainer = document.getElementById('job-list-container');
     if (jobListContainer) {
-        jobListContainer.innerHTML = availableJobs.map(job => `
+        jobListContainer.innerHTML = activeJobs.map(job => `
             <button onclick="requestJob('${job.title}', ${job.price}, '${job.icon}')" class="bg-slate-900 hover:bg-slate-800 border border-slate-800 hover:border-indigo-500/50 p-5 rounded-2xl flex flex-col items-center justify-center text-center transition group active:scale-95">
                 <div class="w-12 h-12 rounded-xl bg-slate-800 group-hover:bg-indigo-600/10 text-slate-300 group-hover:text-indigo-400 flex items-center justify-center text-xl mb-3 transition">
                     <i class="fa-solid ${job.icon}"></i>
@@ -217,6 +264,27 @@ function updateUI() {
                 <span class="text-xs font-bold text-indigo-400">¥${job.price}</span>
             </button>
         `).join('');
+    }
+
+    // 完了済みのカード生成（一番下用・クリック不可のグレーアウトUI）
+    const completedSection = document.getElementById('completed-section');
+    const completedListContainer = document.getElementById('completed-job-list-container');
+    
+    if (completedSection && completedListContainer) {
+        if (completedJobs.length > 0) {
+            completedSection.style.display = 'block';
+            completedListContainer.innerHTML = completedJobs.map(job => `
+                <div class="bg-slate-900/50 border border-slate-800/50 p-5 rounded-2xl flex flex-col items-center justify-center text-center opacity-50 cursor-not-allowed">
+                    <div class="w-12 h-12 rounded-xl bg-slate-800/50 text-slate-500 flex items-center justify-center text-xl mb-3">
+                        <i class="fa-solid ${job.icon}"></i>
+                    </div>
+                    <span class="font-medium text-sm text-slate-400 mb-1 line-through">${job.title}</span>
+                    <span class="text-xs font-bold text-slate-500">申請済</span>
+                </div>
+            `).join('');
+        } else {
+            completedSection.style.display = 'none';
+        }
     }
 
     // 1. 子の履歴アコーディオンの中身
