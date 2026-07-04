@@ -43,8 +43,8 @@ function updateClock() {
     const hours = String(jstDate.getHours()).padStart(2, '0');
     const minutes = String(jstDate.getMinutes()).padStart(2, '0');
 
-    // 指定されたフォーマット: 2026 / 7 / 2 (Thur) 11:50
-    const timeString = `${year} / ${month} / ${date} (${dayStr}) ${hours}:${minutes}`;
+    // 指定されたフォーマット: 2026/7/2(Thur) 11:55
+    const timeString = `${year}/${month}/${date}(${dayStr}) ${hours}:${minutes}`;
 
     // 時計要素の更新
     const clockEl = document.getElementById('realtime-clock');
@@ -217,6 +217,8 @@ function handleRequest(id, isApproved) {
             showToast(`「${req.title}」を承認しました。金額が確定しました！`);
         } else {
             showToast(`「${req.title}」の申請を却下しました。`);
+            // 却下された場合は、完了済みリストから除外して元の場所に戻す
+            completedToday = completedToday.filter(title => title !== req.title);
         }
         updateUI();
     }
@@ -273,15 +275,21 @@ function updateUI() {
     if (completedSection && completedListContainer) {
         if (completedJobs.length > 0) {
             completedSection.style.display = 'block';
-            completedListContainer.innerHTML = completedJobs.map(job => `
+            completedListContainer.innerHTML = completedJobs.map(job => {
+                // 承認待ちリスト(pendingRequests)に存在するかどうかで状態を判定
+                const isPending = pendingRequests.some(req => req.title === job.title);
+                const statusText = isPending ? '申請待ち' : '完了済み';
+                
+                return `
                 <div class="bg-slate-900/50 border border-slate-800/50 p-5 rounded-2xl flex flex-col items-center justify-center text-center opacity-50 cursor-not-allowed">
                     <div class="w-12 h-12 rounded-xl bg-slate-800/50 text-slate-500 flex items-center justify-center text-xl mb-3">
                         <i class="fa-solid ${job.icon}"></i>
                     </div>
                     <span class="font-medium text-sm text-slate-400 mb-1 line-through">${job.title}</span>
-                    <span class="text-xs font-bold text-slate-500">申請済</span>
+                    <span class="text-xs font-bold text-slate-500">${statusText}</span>
                 </div>
-            `).join('');
+                `
+            }).join('');
         } else {
             completedSection.style.display = 'none';
         }
