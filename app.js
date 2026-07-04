@@ -373,3 +373,78 @@ function updateUI() {
         `).join('');
     }
 }
+// --- テーマカラー設定 ---
+
+// 設定On/Offでカラーパレットをスライド開閉する
+function toggleColorPalette() {
+    const toggle = document.getElementById('color-toggle');
+    const palette = document.getElementById('color-palette');
+    
+    if (toggle.checked) {
+        // トグルOn: パレットをスライドダウン
+        palette.style.maxHeight = palette.scrollHeight + 50 + 'px'; 
+        palette.style.opacity = '1';
+    } else {
+        // トグルOff: パレットを隠してデフォルト色に戻す
+        palette.style.maxHeight = '0px';
+        palette.style.opacity = '0';
+        changeTheme('default');
+    }
+}
+
+// 構造を変えずに動的CSSを注入してアプリ全体の色を変える
+function changeTheme(color) {
+    let styleTag = document.getElementById('dynamic-theme');
+    
+    // 注入用のstyleタグがなければhead内に作成
+    if (!styleTag) {
+        styleTag = document.createElement('style');
+        styleTag.id = 'dynamic-theme';
+        document.head.appendChild(styleTag);
+    }
+
+    let css = '';
+    switch (color) {
+        case 'black':
+            css = `body { background-color: #000 !important; color: #fff !important; } 
+                   .bg-slate-900, .bg-slate-950, .bg-slate-900\\/50 { background-color: #111 !important; border-color: #333 !important; }`;
+            break;
+        case 'white':
+            // 白テーマの場合は文字や枠線が見えるように細かく色を反転
+            css = `body { background-color: #f8fafc !important; color: #0f172a !important; }
+                   .bg-slate-900, .bg-slate-950, .bg-slate-900\\/50 { background-color: #ffffff !important; border-color: #e2e8f0 !important; color: #0f172a !important; }
+                   .bg-slate-800 { background-color: #f1f5f9 !important; color: #0f172a !important; border-color: #cbd5e1 !important; }
+                   .text-slate-100, .text-slate-200, .text-slate-300, .text-slate-400, .text-slate-500, .text-slate-300 i, .text-slate-400 i { color: #334155 !important; }
+                   .border-slate-800, .border-slate-700 { border-color: #cbd5e1 !important; }`;
+            break;
+        case 'blue':
+            css = `body { background-color: #082f49 !important; color: #e0f2fe !important; } 
+                   .bg-slate-900, .bg-slate-950, .bg-slate-900\\/50 { background-color: #0c4a6e !important; border-color: #0284c7 !important; }`;
+            break;
+        case 'green':
+            css = `body { background-color: #052e16 !important; color: #dcfce7 !important; } 
+                   .bg-slate-900, .bg-slate-950, .bg-slate-900\\/50 { background-color: #14532d !important; border-color: #16a34a !important; }`;
+            break;
+        case 'yellow':
+            css = `body { background-color: #422006 !important; color: #fef08a !important; } 
+                   .bg-slate-900, .bg-slate-950, .bg-slate-900\\/50 { background-color: #713f12 !important; border-color: #eab308 !important; }`;
+            break;
+        case 'red':
+            css = `body { background-color: #450a0a !important; color: #fee2e2 !important; } 
+                   .bg-slate-900, .bg-slate-950, .bg-slate-900\\/50 { background-color: #7f1d1d !important; border-color: #dc2626 !important; }`;
+            break;
+        case 'pink':
+            css = `body { background-color: #500724 !important; color: #fce7f3 !important; } 
+                   .bg-slate-900, .bg-slate-950, .bg-slate-900\\/50 { background-color: #831843 !important; border-color: #db2777 !important; }`;
+            break;
+        case 'orange':
+            css = `body { background-color: #431407 !important; color: #ffedd5 !important; } 
+                   .bg-slate-900, .bg-slate-950, .bg-slate-900\\/50 { background-color: #7c2d12 !important; border-color: #ea580c !important; }`;
+            break;
+        default:
+            css = ''; // defaultの場合は空にしてTailwindの標準色に戻す
+    }
+    
+    // 生成したCSSをスタイルタグに反映
+    styleTag.innerHTML = css;
+}
