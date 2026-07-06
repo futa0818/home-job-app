@@ -2,7 +2,7 @@
 
 // --- 状態管理 (State) ---
 let currentRole = null; // 'child' or 'parent'
-let currentTab = 'main'; // 'main', 'report', 'settings'
+let currentTab = 'main'; // 'main', 'notifications', 'report', 'settings'
 
 // 本日完了したお手伝いのタイトルを保持する配列 (0時リセット用)
 let completedToday = [];
@@ -27,6 +27,7 @@ let totalAmount = 0;
 let confirmedHistory = [];
 let pendingRequests = [];
 let pendingProposals = [];
+let notifications = []; // 新規追加: 通知リストを保持
 
 // --- リアルタイム時計機能 (JST) ---
 function updateClock() {
@@ -68,6 +69,27 @@ function updateClock() {
 updateClock();
 setInterval(updateClock, 1000);
 
+// --- 通知追加機能 ---
+function addNotification(message) {
+    const now = new Date();
+    const jstString = now.toLocaleString("en-US", { timeZone: "Asia/Tokyo" });
+    const jstDate = new Date(jstString);
+    const year = jstDate.getFullYear();
+    const month = jstDate.getMonth() + 1;
+    const date = jstDate.getDate();
+    const hours = String(jstDate.getHours()).padStart(2, '0');
+    const minutes = String(jstDate.getMinutes()).padStart(2, '0');
+    
+    // 日付と時間を小さく付けるためのタイムスタンプ生成
+    const timestamp = `${year}/${month}/${date} ${hours}:${minutes}`;
+
+    notifications.unshift({
+        id: Date.now(),
+        message: message,
+        timestamp: timestamp
+    });
+}
+
 // --- 画面初期化・切り替え ---
 function loginAs(role) {
     currentRole = role;
@@ -96,23 +118,32 @@ function logout() {
 function switchTab(tabName) {
     currentTab = tabName;
     
+    // 全てのタブを一旦隠す
     document.getElementById('tab-child-main').classList.add('hidden');
     document.getElementById('tab-parent-main').classList.add('hidden');
+    document.getElementById('tab-notifications').classList.add('hidden');
     document.getElementById('tab-report').classList.add('hidden');
     document.getElementById('tab-settings').classList.add('hidden');
     
-    ['main', 'report', 'settings'].forEach(t => {
-        document.getElementById(`nav-${t}`).className = "text-slate-400 hover:text-white px-3 py-1.5 rounded-xl text-sm font-medium transition";
+    // ナビゲーションのスタイルをリセット
+    ['main', 'notifications', 'report', 'settings'].forEach(t => {
+        const navEl = document.getElementById(`nav-${t}`);
+        if(navEl) navEl.className = "text-slate-400 hover:text-white px-3 py-1.5 rounded-xl text-sm font-medium transition";
     });
 
-    document.getElementById(`nav-${tabName}`).className = "bg-slate-800 text-white px-3 py-1.5 rounded-xl text-sm font-medium transition";
+    // 選択されたナビゲーションをハイライト
+    const activeNav = document.getElementById(`nav-${tabName}`);
+    if(activeNav) activeNav.className = "bg-slate-800 text-white px-3 py-1.5 rounded-xl text-sm font-medium transition";
 
+    // 選択されたタブを表示
     if (tabName === 'main') {
         if (currentRole === 'child') {
             document.getElementById('tab-child-main').classList.remove('hidden');
         } else {
             document.getElementById('tab-parent-main').classList.remove('hidden');
         }
+    } else if (tabName === 'notifications') {
+        document.getElementById('tab-notifications').classList.remove('hidden');
     } else if (tabName === 'report') {
         document.getElementById('tab-report').classList.remove('hidden');
     } else if (tabName === 'settings') {
@@ -156,10 +187,8 @@ function showToast(message) {
 
 // --- 子のアクション ---
 function requestJob(title, price, icon) {
-    // 既に本日完了済みの場合は処理しない
     if (completedToday.includes(title)) return;
 
-    // 申請データを追加
     const newRequest = {
         id: Date.now(),
         title: title,
@@ -169,11 +198,10 @@ function requestJob(title, price, icon) {
     };
     pendingRequests.unshift(newRequest);
     
-    // 本日完了済みとしてタイトルを記録 (ボタン無効化のため)
     completedToday.push(title);
     
     showToast(`「${title}」の実行を親に申請しました！`);
-    updateUI(); // 画面を更新し、押したボタンを完了済みセクションへ移動
+    updateUI();
 }
 
 function submitProposal() {
@@ -215,10 +243,13 @@ function handleRequest(id, isApproved) {
                 date: new Date().toLocaleDateString('ja-JP')
             });
             showToast(`「${req.title}」を承認しました。金額が確定しました！`);
+            // 通知の追加 (許可)
+            addNotification(`お手伝い申請「${req.title}」が許可されました。`);
         } else {
             showToast(`「${req.title}」の申請を却下しました。`);
-            // 却下された場合は、完了済みリストから除外して元の場所に戻す
             completedToday = completedToday.filter(title => title !== req.title);
+            // 通知の追加 (拒否)
+            addNotification(`お手伝い申請「${req.title}」が拒否されました。`);
         }
         updateUI();
     }
@@ -237,8 +268,12 @@ function handleProposal(id, isApproved) {
                 icon: 'fa-star' 
             });
             showToast(`提案「${prop.title}」を採用しました！お手伝いリストに追加されました。`);
+            // 通知の追加 (提案の許可)
+            addNotification(`新しいお手伝い「${prop.title}」の追加が許可されました。`);
         } else {
             showToast(`提案「${prop.title}」を見送りました。`);
+            // 通知の追加 (提案の見送り)
+            addNotification(`新しいお手伝い「${prop.title}」の追加が見送られました。`);
         }
         updateUI();
     }
@@ -276,7 +311,6 @@ function updateUI() {
         if (completedJobs.length > 0) {
             completedSection.style.display = 'block';
             completedListContainer.innerHTML = completedJobs.map(job => {
-                // 承認待ちリスト(pendingRequests)に存在するかどうかで状態を判定
                 const isPending = pendingRequests.some(req => req.title === job.title);
                 const statusText = isPending ? '申請待ち' : '完了済み';
                 
@@ -372,31 +406,41 @@ function updateUI() {
             </div>
         `).join('');
     }
-}
-// --- テーマカラー設定 ---
 
-// 設定On/Offでカラーパレットをスライド開閉する
+    // 5. 新規追加: 通知リストのレンダリング
+    const notificationsList = document.getElementById('notifications-list');
+    if (notificationsList) {
+        if (notifications.length === 0) {
+            notificationsList.innerHTML = `<p class="text-xs text-slate-500 text-center py-4">通知はまだありません</p>`;
+        } else {
+            notificationsList.innerHTML = notifications.map(notif => `
+                <div class="flex flex-col bg-slate-950/50 p-3 rounded-xl border border-slate-800 shadow-sm">
+                    <span class="text-sm text-slate-300 font-medium">${notif.message}</span>
+                    <span class="text-[10px] text-slate-500 mt-1.5"><i class="fa-regular fa-clock mr-1"></i>${notif.timestamp}</span>
+                </div>
+            `).join('');
+        }
+    }
+}
+
+// --- テーマカラー設定 ---
 function toggleColorPalette() {
     const toggle = document.getElementById('color-toggle');
     const palette = document.getElementById('color-palette');
     
     if (toggle.checked) {
-        // トグルOn: パレットをスライドダウン
         palette.style.maxHeight = palette.scrollHeight + 50 + 'px'; 
         palette.style.opacity = '1';
     } else {
-        // トグルOff: パレットを隠してデフォルト色に戻す
         palette.style.maxHeight = '0px';
         palette.style.opacity = '0';
         changeTheme('default');
     }
 }
 
-// 構造を変えずに動的CSSを注入してアプリ全体の色を変える
 function changeTheme(color) {
     let styleTag = document.getElementById('dynamic-theme');
     
-    // 注入用のstyleタグがなければhead内に作成
     if (!styleTag) {
         styleTag = document.createElement('style');
         styleTag.id = 'dynamic-theme';
@@ -410,7 +454,6 @@ function changeTheme(color) {
                    .bg-slate-900, .bg-slate-950, .bg-slate-900\\/50 { background-color: #111 !important; border-color: #333 !important; }`;
             break;
         case 'white':
-            // 白テーマの場合は文字や枠線が見えるように細かく色を反転
             css = `body { background-color: #f8fafc !important; color: #0f172a !important; }
                    .bg-slate-900, .bg-slate-950, .bg-slate-900\\/50 { background-color: #ffffff !important; border-color: #e2e8f0 !important; color: #0f172a !important; }
                    .bg-slate-800 { background-color: #f1f5f9 !important; color: #0f172a !important; border-color: #cbd5e1 !important; }
@@ -442,9 +485,8 @@ function changeTheme(color) {
                    .bg-slate-900, .bg-slate-950, .bg-slate-900\\/50 { background-color: #7c2d12 !important; border-color: #ea580c !important; }`;
             break;
         default:
-            css = ''; // defaultの場合は空にしてTailwindの標準色に戻す
+            css = '';
     }
     
-    // 生成したCSSをスタイルタグに反映
     styleTag.innerHTML = css;
 }

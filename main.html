@@ -53,6 +53,9 @@
                         <button onclick="switchTab('main')" id="nav-main" class="text-slate-400 hover:text-white px-3 py-1.5 rounded-xl text-sm font-medium transition">
                             <i class="fa-solid fa-house mr-1"></i>メイン
                         </button>
+                        <button onclick="switchTab('notifications')" id="nav-notifications" class="text-slate-400 hover:text-white px-3 py-1.5 rounded-xl text-sm font-medium transition">
+                            <i class="fa-solid fa-bell mr-1"></i>通知box
+                        </button>
                         <button onclick="switchTab('report')" id="nav-report" class="text-slate-400 hover:text-white px-3 py-1.5 rounded-xl text-sm font-medium transition">
                             <i class="fa-solid fa-chart-simple mr-1"></i>レポート
                         </button>
@@ -107,13 +110,13 @@
                 <div>
                     <h3 class="text-sm font-semibold text-slate-400 mb-3"><i class="fa-solid fa-circle-check mr-1.5 text-indigo-400"></i>お手伝いを申請する</h3>
                     <div id="job-list-container" class="grid grid-cols-2 sm:grid-cols-3 gap-3">
-                        </div>
+                    </div>
                 </div>
 
                 <div id="completed-section" class="pt-4" style="display: none;">
                     <h3 class="text-sm font-semibold text-slate-500 mb-3"><i class="fa-solid fa-check-double mr-1.5"></i>本日の完了済み（0時にリセット）</h3>
                     <div id="completed-job-list-container" class="grid grid-cols-2 sm:grid-cols-3 gap-3">
-                        </div>
+                    </div>
                 </div>
             </div>
 
@@ -133,6 +136,18 @@
                         <div class="text-sm text-slate-500 bg-slate-900 rounded-2xl p-6 text-center border border-slate-800">
                             現在、新しい提案はありません。
                         </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 新規追加: 通知ボックスタブ -->
+            <div id="tab-notifications" class="hidden space-y-6">
+                <div class="flex items-center justify-between">
+                    <h2 class="text-lg font-bold"><i class="fa-solid fa-bell text-indigo-400 mr-1.5"></i>通知box</h2>
+                </div>
+                <div class="bg-slate-900 border border-slate-800 rounded-2xl p-5">
+                    <div id="notifications-list" class="space-y-3">
+                        <p class="text-xs text-slate-500 text-center py-4">通知はまだありません</p>
                     </div>
                 </div>
             </div>
@@ -168,22 +183,21 @@
 
             <div id="tab-settings" class="hidden space-y-6">
                 <h2 class="text-lg font-bold">アプリ設定</h2>
-                <div class="bg-slate-900 border border-slate-800 rounded-2xl divide-y divide-slate-800 transition-all">
-                        <!-- 色設定 -->
+                
+                <div class="bg-slate-900 border border-slate-800 rounded-2xl divide-y divide-slate-800 transition-all mb-6">
+                    <!-- 色設定 -->
                     <div class="p-4">
                         <div class="flex items-center justify-between">
                             <div>
                                 <p class="text-sm font-medium">色（テーマカラー）</p>
                                 <p class="text-xs text-slate-400">アプリ全体のカラーテーマを変更します</p>
                             </div>
-                            <!-- On/Off トグルスイッチ -->
                             <label class="relative inline-flex items-center cursor-pointer">
                                 <input type="checkbox" id="color-toggle" onchange="toggleColorPalette()" class="sr-only peer">
                                 <div class="w-11 h-6 bg-slate-800 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-slate-300 after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-indigo-600"></div>
                             </label>
                         </div>
             
-                        <!-- スライドして出てくるカラーパレット -->
                         <div id="color-palette" class="max-h-0 opacity-0 overflow-hidden transition-all duration-300">
                             <div class="pt-4 mt-4 border-t border-slate-800 grid grid-cols-4 sm:grid-cols-8 gap-3">
                                 <button onclick="changeTheme('black')" class="w-full aspect-square rounded-full bg-black border-2 border-slate-700 hover:scale-110 transition shadow-lg" title="黒"></button>
@@ -198,11 +212,7 @@
                         </div>
                     </div>
                 </div>
-            </div>
 
-            <div id="tab-settings" class="hidden space-y-6">
-                <h2 class="text-lg font-bold">アプリ設定</h2>
-                
                 <div class="bg-slate-900 border border-slate-800 rounded-2xl divide-y divide-slate-800">
                     <div class="p-4 flex items-center justify-between">
                         <div>
