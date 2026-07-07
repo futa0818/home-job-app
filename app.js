@@ -4,6 +4,10 @@
 let currentRole = null; // 'child' or 'parent'
 let currentTab = 'main'; // 'main', 'notifications', 'report', 'settings'
 
+// 親と子それぞれのテーマカラーを保持する変数
+let childTheme = 'default';
+let parentTheme = 'default';
+
 // 本日完了したお手伝いのタイトルを保持する配列 (0時リセット用)
 let completedToday = [];
 let lastActiveDate = ""; // 日付リセット判定用
@@ -96,6 +100,9 @@ function loginAs(role) {
     document.getElementById('screen-login').classList.add('hidden');
     document.getElementById('app-layout').classList.remove('hidden');
     
+    // ログインしたロールのテーマカラーを適用
+    applyTheme(role === 'child' ? childTheme : parentTheme);
+    
     const badge = document.getElementById('role-badge');
     if (role === 'child') {
         badge.innerText = '子モード';
@@ -111,6 +118,7 @@ function loginAs(role) {
 
 function logout() {
     currentRole = null;
+    applyTheme('default'); // ログアウト時はデフォルトカラーに戻す
     document.getElementById('app-layout').classList.add('hidden');
     document.getElementById('screen-login').classList.remove('hidden');
 }
@@ -439,6 +447,19 @@ function toggleColorPalette() {
 }
 
 function changeTheme(color) {
+    // 現在のロールに応じてカラーを保存して独立させる
+    if (currentRole === 'child') {
+        childTheme = color;
+    } else if (currentRole === 'parent') {
+        parentTheme = color;
+    }
+    
+    // 選択されたテーマを適用
+    applyTheme(color);
+}
+
+// 実際のCSS適用処理
+function applyTheme(color) {
     let styleTag = document.getElementById('dynamic-theme');
     
     if (!styleTag) {
