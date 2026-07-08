@@ -3,6 +3,7 @@
 // --- 状態管理 (State) ---
 let currentRole = null; // 'child' or 'parent'
 let currentTab = 'main'; // 'main', 'notifications', 'report', 'settings'
+let parentPassword = 'fuu18'; // 追加: 親アカウントの初期パスワード
 
 // 親と子それぞれのテーマカラーを保持する変数
 let childTheme = 'default';
@@ -95,6 +96,16 @@ function addNotification(message) {
 }
 
 // --- 画面初期化・切り替え ---
+// 追加: 親アカウントログイン時のパスワード入力処理
+function promptParentLogin() {
+    const input = prompt('親アカウントのパスワードを入力してください:');
+    if (input === parentPassword) {
+        loginAs('parent');
+    } else if (input !== null) {
+        alert('パスワードが間違っています。');
+    }
+}
+
 function loginAs(role) {
     currentRole = role;
     document.getElementById('screen-login').classList.add('hidden');
@@ -191,6 +202,34 @@ function showToast(message) {
         toast.classList.remove('translate-y-0', 'opacity-100');
         toast.classList.add('translate-y-20', 'opacity-0');
     }, 2500);
+}
+
+// --- 追加: パスワードの変更処理 ---
+function updateParentPassword() {
+    const currentInput = document.getElementById('current-password-input');
+    const newInput = document.getElementById('new-password-input');
+    const confirmInput = document.getElementById('confirm-password-input');
+
+    if (currentInput.value !== parentPassword) {
+        showToast('現在のパスワードが間違っています。');
+        return;
+    }
+    if (!newInput.value) {
+        showToast('新しいパスワードを入力してください。');
+        return;
+    }
+    if (newInput.value !== confirmInput.value) {
+        showToast('新しいパスワードと確認用パスワードが一致しません。');
+        return;
+    }
+
+    parentPassword = newInput.value;
+    showToast('パスワードを正常に変更しました！');
+
+    // 入力欄をクリア
+    currentInput.value = '';
+    newInput.value = '';
+    confirmInput.value = '';
 }
 
 // --- 子のアクション ---
@@ -415,7 +454,7 @@ function updateUI() {
         `).join('');
     }
 
-    // 5. 新規追加: 通知リストのレンダリング
+    // 5. 通知リストのレンダリング
     const notificationsList = document.getElementById('notifications-list');
     if (notificationsList) {
         if (notifications.length === 0) {
@@ -427,6 +466,16 @@ function updateUI() {
                     <span class="text-[10px] text-slate-500 mt-1.5"><i class="fa-regular fa-clock mr-1"></i>${notif.timestamp}</span>
                 </div>
             `).join('');
+        }
+    }
+    
+    // 6. 追加: 設定画面の親専用メニュー（パスワード変更）の表示切り替え
+    const passwordSettings = document.getElementById('parent-password-settings');
+    if (passwordSettings) {
+        if (currentRole === 'parent') {
+            passwordSettings.classList.remove('hidden');
+        } else {
+            passwordSettings.classList.add('hidden');
         }
     }
 }
