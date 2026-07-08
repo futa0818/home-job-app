@@ -27,7 +27,8 @@
                     <i class="fa-solid fa-chevron-right text-sm opacity-60"></i>
                 </button>
                 
-                <button onclick="loginAs('parent')" class="w-full bg-slate-800 hover:bg-slate-700 text-white font-semibold py-4 px-6 rounded-2xl transition duration-200 flex items-center justify-between border border-slate-700">
+                <!-- 親のログインをパスワード入力関数へ変更 -->
+                <button onclick="promptParentLogin()" class="w-full bg-slate-800 hover:bg-slate-700 text-white font-semibold py-4 px-6 rounded-2xl transition duration-200 flex items-center justify-between border border-slate-700">
                     <div class="flex items-center space-x-3">
                         <i class="fa-solid fa-user-tie text-xl text-indigo-400"></i>
                         <span>親として入る</span>
@@ -74,6 +75,7 @@
 
         <main class="flex-1 max-w-4xl w-full mx-auto p-4 space-y-6 pb-12">
 
+            <!-- (メイン、通知、レポートのタブは変更なし) -->
             <div id="tab-child-main" class="hidden space-y-6">
                 <div class="bg-gradient-to-br from-indigo-900 to-slate-900 border border-indigo-500/30 rounded-3xl p-6 shadow-xl relative overflow-hidden">
                     <div class="absolute -right-8 -bottom-8 text-indigo-500/10 text-9xl font-bold"><i class="fa-solid fa-coins"></i></div>
@@ -140,7 +142,6 @@
                 </div>
             </div>
 
-            <!-- 新規追加: 通知ボックスタブ -->
             <div id="tab-notifications" class="hidden space-y-6">
                 <div class="flex items-center justify-between">
                     <h2 class="text-lg font-bold"><i class="fa-solid fa-bell text-indigo-400 mr-1.5"></i>通知box</h2>
@@ -181,6 +182,7 @@
                 </div>
             </div>
 
+            <!-- 設定タブの改修 -->
             <div id="tab-settings" class="hidden space-y-6">
                 <h2 class="text-lg font-bold">アプリ設定</h2>
                 
@@ -209,6 +211,22 @@
                                 <button onclick="changeTheme('pink')" class="w-full aspect-square rounded-full bg-pink-800 border-2 border-pink-300 hover:scale-110 transition shadow-lg" title="ピンク"></button>
                                 <button onclick="changeTheme('orange')" class="w-full aspect-square rounded-full bg-orange-700 border-2 border-orange-300 hover:scale-110 transition shadow-lg" title="オレンジ"></button>
                             </div>
+                        </div>
+                    </div>
+
+                    <!-- 追加: パスワード設定（親のみ表示） -->
+                    <div id="parent-password-settings" class="p-4 hidden">
+                        <div class="mb-4">
+                            <p class="text-sm font-medium">親アカウント パスワード変更</p>
+                            <p class="text-xs text-slate-400">親アカウントへログインするためのパスワードを変更します</p>
+                        </div>
+                        <div class="space-y-3">
+                            <input type="password" id="current-password-input" placeholder="現在のパスワード" class="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-2.5 text-sm text-slate-200 focus:outline-none focus:border-indigo-500">
+                            <input type="password" id="new-password-input" placeholder="新しいパスワード" class="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-2.5 text-sm text-slate-200 focus:outline-none focus:border-indigo-500">
+                            <input type="password" id="confirm-password-input" placeholder="新しいパスワード（確認用）" class="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-2.5 text-sm text-slate-200 focus:outline-none focus:border-indigo-500">
+                            <button onclick="updateParentPassword()" class="w-full bg-slate-800 hover:bg-rose-600/80 text-slate-200 hover:text-white font-medium py-2.5 rounded-xl text-sm transition duration-150">
+                                パスワードを変更する
+                            </button>
                         </div>
                     </div>
                 </div>
