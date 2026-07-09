@@ -235,6 +235,27 @@
         </main>
     </div>
 
+    <!-- お手伝い編集モーダル -->
+    <div id="edit-job-modal" class="hidden fixed inset-0 bg-black/60 z-[100] flex items-center justify-center p-4">
+        <div class="bg-slate-900 border border-slate-800 rounded-3xl p-6 w-full max-w-sm shadow-2xl">
+            <h3 class="text-lg font-bold text-slate-200 mb-4"><i class="fa-solid fa-pen mr-2 text-indigo-400"></i>お手伝いの編集</h3>
+            <div class="space-y-4">
+                <div>
+                    <label class="block text-xs text-slate-400 mb-1">お手伝いの名前</label>
+                    <input type="text" id="edit-job-title-input" class="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-2 text-sm text-slate-200 focus:outline-none focus:border-indigo-500">
+                </div>
+                <div>
+                    <label class="block text-xs text-slate-400 mb-1">金額 (¥)</label>
+                    <input type="number" id="edit-job-price-input" class="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-2 text-sm text-slate-200 focus:outline-none focus:border-indigo-500">
+                </div>
+            </div>
+            <div class="mt-6 flex space-x-3">
+                <button onclick="closeEditModal()" class="flex-1 bg-slate-800 hover:bg-slate-700 text-slate-300 font-medium py-2.5 rounded-xl text-sm transition">キャンセル</button>
+                <button onclick="saveEditedJob()" class="flex-1 bg-indigo-600 hover:bg-indigo-500 text-white font-medium py-2.5 rounded-xl text-sm transition">保存する</button>
+            </div>
+        </div>
+    </div>
+
     <div id="toast" class="fixed bottom-5 right-5 bg-indigo-600 text-white text-sm font-medium py-3 px-5 rounded-xl shadow-xl transition-all duration-300 transform translate-y-20 opacity-0 z-50 flex items-center space-x-2">
         <i class="fa-solid fa-circle-info"></i>
         <span id="toast-message">通知メッセージ</span>
