@@ -340,13 +340,27 @@ function updateUI() {
     const jobListContainer = document.getElementById('job-list-container');
     if (jobListContainer) {
         jobListContainer.innerHTML = activeJobs.map(job => `
-            <button onclick="requestJob('${job.title}', ${job.price}, '${job.icon}')" class="bg-slate-900 hover:bg-slate-800 border border-slate-800 hover:border-indigo-500/50 p-5 rounded-2xl flex flex-col items-center justify-center text-center transition group active:scale-95">
-                <div class="w-12 h-12 rounded-xl bg-slate-800 group-hover:bg-indigo-600/10 text-slate-300 group-hover:text-indigo-400 flex items-center justify-center text-xl mb-3 transition">
-                    <i class="fa-solid ${job.icon}"></i>
+            <div class="bg-slate-900 hover:bg-slate-800 border border-slate-800 hover:border-indigo-500/50 p-5 rounded-2xl flex flex-col items-center justify-center text-center transition group relative">
+                
+                <!-- 追加: 編集・削除ボタン (右上にホバー時のみ表示) -->
+                <div class="absolute top-2 right-2 flex space-x-1 opacity-0 group-hover:opacity-100 transition-opacity z-10">
+                    <button onclick="promptEditJob('${job.title}')" class="text-slate-400 hover:text-indigo-400 p-2 rounded-lg bg-slate-800/80 hover:bg-slate-700 transition" title="編集">
+                        <i class="fa-solid fa-pen text-xs"></i>
+                    </button>
+                    <button onclick="promptDeleteJob('${job.title}')" class="text-slate-400 hover:text-rose-400 p-2 rounded-lg bg-slate-800/80 hover:bg-slate-700 transition" title="削除">
+                        <i class="fa-solid fa-trash text-xs"></i>
+                    </button>
                 </div>
-                <span class="font-medium text-sm text-slate-200 mb-1">${job.title}</span>
-                <span class="text-xs font-bold text-indigo-400">¥${job.price}</span>
-            </button>
+                
+                <!-- 既存の申請用ボタン部分 (独立したボタンに変更) -->
+                <button onclick="requestJob('${job.title}', ${job.price}, '${job.icon}')" class="flex flex-col items-center justify-center w-full active:scale-95 pt-2">
+                    <div class="w-12 h-12 rounded-xl bg-slate-800 group-hover:bg-indigo-600/10 text-slate-300 group-hover:text-indigo-400 flex items-center justify-center text-xl mb-3 transition">
+                        <i class="fa-solid ${job.icon}"></i>
+                    </div>
+                    <span class="font-medium text-sm text-slate-200 mb-1">${job.title}</span>
+                    <span class="text-xs font-bold text-indigo-400">¥${job.price}</span>
+                </button>
+            </div>
         `).join('');
     }
 
@@ -559,4 +573,74 @@ function applyTheme(color) {
     }
     
     styleTag.innerHTML = css;
+}
+
+// --- お手伝いの編集・削除機能 ---
+
+// 親のパスワードを確認する関数
+function verifyParentPassword() {
+    const input = prompt('親権限が必要です。親アカウントのパスワードを入力してください:');
+    return input === parentPassword;
+}
+
+// 削除アクション
+function promptDeleteJob(title) {
+    if (!verifyParentPassword()) {
+        alert('パスワードが間違っているか、キャンセルされました。');
+        return;
+    }
+    
+    if (confirm(`本当に「${title}」を削除しますか？`)) {
+        availableJobs = availableJobs.filter(job => job.title !== title);
+        showToast(`「${title}」を削除しました。`);
+        updateUI();
+    }
+}
+
+let currentEditJobTitle = "";
+
+// 編集アクション（モーダル展開）
+function promptEditJob(title) {
+    if (!verifyParentPassword()) {
+        alert('パスワードが間違っているか、キャンセルされました。');
+        return;
+    }
+    
+    const job = availableJobs.find(j => j.title === title);
+    if (!job) return;
+    
+    // 入力欄に現在のデータをセット
+    currentEditJobTitle = title;
+    document.getElementById('edit-job-title-input').value = job.title;
+    document.getElementById('edit-job-price-input').value = job.price;
+    
+    // モーダルを表示
+    document.getElementById('edit-job-modal').classList.remove('hidden');
+}
+
+// モーダルを閉じる
+function closeEditModal() {
+    document.getElementById('edit-job-modal').classList.add('hidden');
+    currentEditJobTitle = "";
+}
+
+// 編集内容を保存
+function saveEditedJob() {
+    const newTitle = document.getElementById('edit-job-title-input').value.trim();
+    const newPrice = parseInt(document.getElementById('edit-job-price-input').value);
+    
+    if (!newTitle || isNaN(newPrice)) {
+        alert('正しい名前と金額を入力してください。');
+        return;
+    }
+    
+    const jobIndex = availableJobs.findIndex(j => j.title === currentEditJobTitle);
+    if (jobIndex !== -1) {
+        availableJobs[jobIndex].title = newTitle;
+        availableJobs[jobIndex].price = newPrice;
+        showToast(`「${newTitle}」に更新しました。`);
+    }
+    
+    closeEditModal();
+    updateUI();
 }
