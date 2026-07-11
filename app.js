@@ -528,13 +528,26 @@ function updateUI() {
         }
     }
     
-    // 5. 設定タブ (親専用メニュー)
+    // 5. 設定タブ (親専用・子専用メニューの切り替え)
     const passwordSettings = document.getElementById('parent-password-settings');
     if (passwordSettings) {
         if (currentRole === 'parent') {
             passwordSettings.classList.remove('hidden');
         } else {
             passwordSettings.classList.add('hidden');
+        }
+    }
+
+    const childAccountSettings = document.getElementById('child-account-settings');
+    if (childAccountSettings) {
+        if (currentRole === 'child') {
+            childAccountSettings.classList.remove('hidden');
+            const child = children.find(c => c.id === currentUserId);
+            if (child) {
+                document.getElementById('child-name-input').value = child.name;
+            }
+        } else {
+            childAccountSettings.classList.add('hidden');
         }
     }
 }
@@ -551,38 +564,6 @@ function toggleColorPalette() {
         palette.style.maxHeight = '0px'; palette.style.opacity = '0';
         changeTheme('default');
     }
-}
-
-function changeTheme(color) {
-    if (currentRole === 'child') {
-        const child = children.find(c => c.id === currentUserId);
-        if (child) child.theme = color;
-    } else if (currentRole === 'parent') {
-        parentTheme = color;
-    }
-    applyTheme(color);
-}
-
-function applyTheme(color) {
-    let styleTag = document.getElementById('dynamic-theme');
-    if (!styleTag) {
-        styleTag = document.createElement('style');
-        styleTag.id = 'dynamic-theme';
-        document.head.appendChild(styleTag);
-    }
-    let css = '';
-    switch (color) {
-        case 'black': css = `body { background-color: #000 !important; color: #fff !important; } .bg-slate-900, .bg-slate-950, .bg-slate-900\\/50 { background-color: #111 !important; border-color: #333 !important; }`; break;
-        case 'white': css = `body { background-color: #f8fafc !important; color: #0f172a !important; } .bg-slate-900, .bg-slate-950, .bg-slate-900\\/50 { background-color: #ffffff !important; border-color: #e2e8f0 !important; color: #0f172a !important; } .bg-slate-800 { background-color: #f1f5f9 !important; color: #0f172a !important; border-color: #cbd5e1 !important; } .text-slate-100, .text-slate-200, .text-slate-300, .text-slate-400, .text-slate-500, .text-slate-300 i, .text-slate-400 i { color: #334155 !important; } .border-slate-800, .border-slate-700 { border-color: #cbd5e1 !important; }`; break;
-        case 'blue': css = `body { background-color: #082f49 !important; color: #e0f2fe !important; } .bg-slate-900, .bg-slate-950, .bg-slate-900\\/50 { background-color: #0c4a6e !important; border-color: #0284c7 !important; }`; break;
-        case 'green': css = `body { background-color: #052e16 !important; color: #dcfce7 !important; } .bg-slate-900, .bg-slate-950, .bg-slate-900\\/50 { background-color: #14532d !important; border-color: #16a34a !important; }`; break;
-        case 'yellow': css = `body { background-color: #422006 !important; color: #fef08a !important; } .bg-slate-900, .bg-slate-950, .bg-slate-900\\/50 { background-color: #713f12 !important; border-color: #eab308 !important; }`; break;
-        case 'red': css = `body { background-color: #450a0a !important; color: #fee2e2 !important; } .bg-slate-900, .bg-slate-950, .bg-slate-900\\/50 { background-color: #7f1d1d !important; border-color: #dc2626 !important; }`; break;
-        case 'pink': css = `body { background-color: #500724 !important; color: #fce7f3 !important; } .bg-slate-900, .bg-slate-950, .bg-slate-900\\/50 { background-color: #831843 !important; border-color: #db2777 !important; }`; break;
-        case 'orange': css = `body { background-color: #431407 !important; color: #ffedd5 !important; } .bg-slate-900, .bg-slate-950, .bg-slate-900\\/50 { background-color: #7c2d12 !important; border-color: #ea580c !important; }`; break;
-        default: css = '';
-    }
-    styleTag.innerHTML = css;
 }
 
 // --- お手伝いの編集・削除機能 ---
@@ -629,4 +610,84 @@ function saveEditedJob() {
     }
     closeEditModal();
     updateUI();
+}
+
+function changeTheme(color) {
+    if (currentRole === 'child') {
+        const child = children.find(c => c.id === currentUserId);
+        if (child) child.theme = color;
+    } else if (currentRole === 'parent') {
+        parentTheme = color;
+    }
+    applyTheme(color);
+}
+
+function applyTheme(color) {
+    let styleTag = document.getElementById('dynamic-theme');
+    if (!styleTag) {
+        styleTag = document.createElement('style');
+        styleTag.id = 'dynamic-theme';
+        document.head.appendChild(styleTag);
+    }
+    let css = '';
+    switch (color) {
+        case 'black': css = `body { background-color: #000 !important; color: #fff !important; } .bg-slate-900, .bg-slate-950, .bg-slate-900\\/50 { background-color: #111 !important; border-color: #333 !important; }`; break;
+        case 'white': css = `body { background-color: #f8fafc !important; color: #0f172a !important; } .bg-slate-900, .bg-slate-950, .bg-slate-900\\/50 { background-color: #ffffff !important; border-color: #e2e8f0 !important; color: #0f172a !important; } .bg-slate-800 { background-color: #f1f5f9 !important; color: #0f172a !important; border-color: #cbd5e1 !important; } .text-slate-100, .text-slate-200, .text-slate-300, .text-slate-400, .text-slate-500, .text-slate-300 i, .text-slate-400 i { color: #334155 !important; } .border-slate-800, .border-slate-700 { border-color: #cbd5e1 !important; }`; break;
+        case 'blue': css = `body { background-color: #082f49 !important; color: #e0f2fe !important; } .bg-slate-900, .bg-slate-950, .bg-slate-900\\/50 { background-color: #0c4a6e !important; border-color: #0284c7 !important; }`; break;
+        case 'green': css = `body { background-color: #052e16 !important; color: #dcfce7 !important; } .bg-slate-900, .bg-slate-950, .bg-slate-900\\/50 { background-color: #14532d !important; border-color: #16a34a !important; }`; break;
+        case 'yellow': css = `body { background-color: #422006 !important; color: #fef08a !important; } .bg-slate-900, .bg-slate-950, .bg-slate-900\\/50 { background-color: #713f12 !important; border-color: #eab308 !important; }`; break;
+        case 'red': css = `body { background-color: #450a0a !important; color: #fee2e2 !important; } .bg-slate-900, .bg-slate-950, .bg-slate-900\\/50 { background-color: #7f1d1d !important; border-color: #dc2626 !important; }`; break;
+        case 'pink': css = `body { background-color: #500724 !important; color: #fce7f3 !important; } .bg-slate-900, .bg-slate-950, .bg-slate-900\\/50 { background-color: #831843 !important; border-color: #db2777 !important; }`; break;
+        case 'orange': css = `body { background-color: #431407 !important; color: #ffedd5 !important; } .bg-slate-900, .bg-slate-950, .bg-slate-900\\/50 { background-color: #7c2d12 !important; border-color: #ea580c !important; }`; break;
+        default: css = '';
+    }
+    styleTag.innerHTML = css;
+}
+
+// --- 子アカウントの名称変更と削除 ---
+function updateChildName() {
+    const child = children.find(c => c.id === currentUserId);
+    if (!child) return;
+
+    const input = document.getElementById('child-name-input');
+    const newName = input.value.trim();
+
+    if (!newName) { showToast('名前を入力してください。'); return; }
+
+    // 先に親パスワード認証
+    if (!verifyParentPassword()) { alert('パスワードが間違っているか、キャンセルされました。'); return; }
+
+    const oldName = child.name;
+    child.name = newName;
+    
+    showToast(`名前を「${newName}」に変更しました！`);
+    addNotification(`【${oldName}】の名前が「${newName}」に変更されました。`);
+    
+    // バッジ等の再表示
+    const badge = document.getElementById('role-badge');
+    if (badge) badge.innerText = `子モード (${child.name})`;
+    
+    updateUI();
+}
+
+function deleteChildAccount() {
+    const child = children.find(c => c.id === currentUserId);
+    if (!child) return;
+
+    // 先に親パスワード認証
+    if (!verifyParentPassword()) { alert('パスワードが間違っているか、キャンセルされました。'); return; }
+
+    // 2回確認する
+    if (confirm(`本当にアカウント「${child.name}」を削除しますか？\nこの操作は取り消せません。`)) {
+        if (confirm(`【最終確認】本当に削除してよろしいですか？\nこれまでの獲得金額（¥${child.totalAmount.toLocaleString()}）や履歴データもすべて消去されます。`)) {
+            const name = child.name;
+            children = children.filter(c => c.id !== currentUserId);
+            
+            showToast(`「${name}」のアカウントを削除しました。`);
+            addNotification(`アカウント「${name}」が削除されました。`);
+            
+            logout();
+            renderLoginScreen();
+        }
+    }
 }
