@@ -198,6 +198,9 @@ function logout() {
     applyTheme('default'); 
     document.getElementById('app-layout').classList.add('hidden');
     document.getElementById('screen-login').classList.remove('hidden');
+    
+    // ↓この1行を追加して、ログイン画面を最新の状態に再描画します
+    renderLoginScreen();
 }
 
 function switchTab(tabName) {
