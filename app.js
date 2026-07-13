@@ -43,41 +43,36 @@ let availableJobs = [
 // --- ログイン画面の動的生成 ---
 function renderLoginScreen() {
     const container = document.getElementById('login-cards-container');
+    
+    // ★ ここでHTML側の縦並び設定(space-y-4)を上書きし、強制的に横並びにします
+    container.className = "flex flex-wrap justify-center gap-3 sm:gap-4 mt-2";
+    
     let html = '';
 
-    // 1. 親として入るボタン (固定)
+    // 1. 親として入るボタン (青色・正方形)
     html += `
-        <button onclick="promptParentLogin()" class="w-full bg-slate-800 hover:bg-slate-700 text-white font-semibold py-4 px-6 rounded-2xl transition duration-200 flex items-center justify-between border border-slate-700">
-            <div class="flex items-center space-x-3">
-                <i class="fa-solid fa-user-tie text-xl text-indigo-400"></i>
-                <span>親として入る</span>
-            </div>
-            <i class="fa-solid fa-chevron-right text-sm opacity-60"></i>
+        <button onclick="promptParentLogin()" class="w-24 sm:w-28 aspect-square shrink-0 bg-indigo-600 hover:bg-indigo-500 text-white font-semibold rounded-2xl transition duration-200 flex flex-col items-center justify-center p-3 shadow-lg shadow-indigo-600/20">
+            <i class="fa-solid fa-user-tie text-3xl mb-2"></i>
+            <span class="text-xs sm:text-sm">親</span>
         </button>
     `;
 
-    // 2. 作成された子アカウントのボタンを展開
+    // 2. 作成された子アカウントのボタン (無色・正方形)
     children.forEach(child => {
         html += `
-            <button onclick="loginAsChild('${child.id}')" class="w-full bg-indigo-600 hover:bg-indigo-500 text-white font-semibold py-4 px-6 rounded-2xl transition duration-200 flex items-center justify-between shadow-lg shadow-indigo-600/20">
-                <div class="flex items-center space-x-3">
-                    <i class="fa-solid fa-child text-xl"></i>
-                    <span>${child.name} として入る</span>
-                </div>
-                <i class="fa-solid fa-chevron-right text-sm opacity-60"></i>
+            <button onclick="loginAsChild('${child.id}')" class="w-24 sm:w-28 aspect-square shrink-0 bg-slate-800 hover:bg-slate-700 text-white font-semibold rounded-2xl transition duration-200 flex flex-col items-center justify-center p-3 border border-slate-700 shadow-md">
+                <i class="fa-solid fa-child text-3xl mb-2 text-indigo-400"></i>
+                <span class="text-xs sm:text-sm line-clamp-1 w-full text-center">${child.name}</span>
             </button>
         `;
     });
 
-    // 3. 子アカウントの追加ボタン (4人未満の時のみ表示)
+    // 3. 子アカウントの追加ボタン (無色・正方形)
     if (children.length < 4) {
         html += `
-            <button onclick="promptAddChild()" class="w-full bg-emerald-600 hover:bg-emerald-500 text-white font-semibold py-4 px-6 rounded-2xl transition duration-200 flex items-center justify-between shadow-lg shadow-emerald-600/20 mt-2">
-                <div class="flex items-center space-x-3">
-                    <i class="fa-solid fa-plus text-xl"></i>
-                    <span>子アカウントを追加 (${children.length}/4)</span>
-                </div>
-                <i class="fa-solid fa-chevron-right text-sm opacity-60"></i>
+            <button onclick="promptAddChild()" class="w-24 sm:w-28 aspect-square shrink-0 bg-slate-800 hover:bg-slate-700 text-slate-400 font-semibold rounded-2xl transition duration-200 flex flex-col items-center justify-center p-3 border border-slate-700 border-dashed hover:border-slate-500">
+                <i class="fa-solid fa-plus text-2xl mb-2 opacity-80"></i>
+                <span class="text-[10px] sm:text-xs opacity-80 mt-1">追加 (${children.length}/4)</span>
             </button>
         `;
     }
