@@ -137,13 +137,20 @@ updateClock();
 setInterval(updateClock, 1000);
 
 // --- 通知機能 ---
-function addNotification(message) {
+// 【変更後】引数に childId と childName を追加
+function addNotification(childId, childName, message) {
     const now = new Date();
     const jstString = now.toLocaleString("en-US", { timeZone: "Asia/Tokyo" });
     const jstDate = new Date(jstString);
     const timestamp = `${jstDate.getFullYear()}/${jstDate.getMonth() + 1}/${jstDate.getDate()} ${String(jstDate.getHours()).padStart(2, '0')}:${String(jstDate.getMinutes()).padStart(2, '0')}`;
 
-    notifications.unshift({ id: Date.now(), message: message, timestamp: timestamp });
+    notifications.unshift({ 
+        id: Date.now(), 
+        childId: childId, 
+        childName: childName,
+        message: message, 
+        timestamp: timestamp 
+    });
 }
 
 // --- ログイン・画面切り替え処理 ---
@@ -300,11 +307,11 @@ function handleRequest(childId, id, isApproved) {
             child.totalAmount += req.price;
             child.confirmedHistory.unshift({ title: req.title, price: req.price, date: new Date().toLocaleDateString('ja-JP') });
             showToast(`「${req.title}」を承認しました！`);
-            addNotification(`【${child.name}】お手伝い申請「${req.title}」が許可されました。`);
+            addNotification(child.id, child.name, `【${child.name}】お手伝い申請「${req.title}」が許可されました。`); // 変更後
         } else {
             showToast(`「${req.title}」の申請を却下しました。`);
             child.completedToday = child.completedToday.filter(title => title !== req.title);
-            addNotification(`【${child.name}】お手伝い申請「${req.title}」が拒否されました。`);
+            addNotification(child.id, child.name, `【${child.name}】お手伝い申請「${req.title}」が拒否されました。`); // 変更後
         }
         updateUI();
     }
@@ -322,10 +329,10 @@ function handleProposal(childId, id, isApproved) {
         if (isApproved) {
             availableJobs.push({ title: prop.title, price: prop.price, icon: 'fa-star' });
             showToast(`提案「${prop.title}」を採用し、リストに追加しました！`);
-            addNotification(`【${child.name}】新メニュー「${prop.title}」の追加が許可されました。`);
+            addNotification(child.id, child.name, `【${child.name}】新メニュー「${prop.title}」の追加が許可されました。`); // 変更後
         } else {
             showToast(`提案「${prop.title}」を見送りました。`);
-            addNotification(`【${child.name}】新メニュー「${prop.title}」の追加が見送られました。`);
+            addNotification(child.id, child.name, `【${child.name}】新メニュー「${prop.title}」の追加が見送られました。`); // 変更後
         }
         updateUI();
     }
@@ -513,17 +520,84 @@ function updateUI() {
 
     // 4. 通知タブ
     if (currentTab === 'notifications') {
-        const notificationsList = document.getElementById('notifications-list');
-        if (notifications.length === 0) {
-            notificationsList.innerHTML = `<p class="text-xs text-slate-500 text-center py-4">通知はまだありません</p>`;
-        } else {
-            notificationsList.innerHTML = notifications.map(notif => `
-                <div class="flex flex-col bg-slate-950/50 p-3 rounded-xl border border-slate-800 shadow-sm">
-                    <span class="text-sm text-slate-300 font-medium">${notif.message}</span>
-                    <span class="text-[10px] text-slate-500 mt-1.5"><i class="fa-regular fa-clock mr-1"></i>${notif.timestamp}</span>
+        const tabContainer = document.getElementById('tab-notifications');
+        
+        // 画面の約75%の高さを確保し、その中で要素を分割するレイアウト
+        let html = `
+            <div class="flex flex-col h-[75vh] gap-4">
+                <div class="flex items-center justify-between shrink-0">
+                    <h2 class="text-lg font-bold"><i class="fa-solid fa-bell text-indigo-400 mr-1.5"></i>通知box</h2>
                 </div>
-            `).join('');
+                <div class="flex-1 flex flex-col gap-4">
+        `;
+
+        if (currentRole === 'child') {
+            // 子アカウントの場合：自分の通知だけを抽出して表示
+            const childNotifs = notifications.filter(n => n.childId === currentUserId);
+            html += `
+                <div class="flex-1 bg-slate-900 border border-slate-800 rounded-2xl p-4 overflow-y-auto">
+                    <div class="space-y-3">
+                        ${childNotifs.length === 0 ? `<p class="text-xs text-slate-500 text-center py-4">通知はまだありません</p>` : childNotifs.map(notif => `
+                            <div class="flex flex-col bg-slate-950/50 p-3 rounded-xl border border-slate-800 shadow-sm">
+                                <span class="text-sm text-slate-300 font-medium">${notif.message}</span>
+                                <span class="text-[10px] text-slate-500 mt-1.5"><i class="fa-regular fa-clock mr-1"></i>${notif.timestamp}</span>
+                            </div>
+                        `).join('')}
+                    </div>
+                </div>
+            `;
+        } else if (currentRole === 'parent') {
+            // 親アカウントの場合：存在する子アカウントごとに枠を作成 (flex-1で均等に縦分割)
+            if (children.length === 0 && notifications.filter(n => n.childId === 'deleted').length === 0) {
+                html += `<div class="bg-slate-900 border border-slate-800 rounded-2xl p-5 text-center text-slate-500 text-xs">通知はまだありません</div>`;
+            } else {
+                children.forEach(child => {
+                    const childNotifs = notifications.filter(n => n.childId === child.id);
+                    html += `
+                        <div class="flex-1 flex flex-col bg-slate-900 border border-slate-800 rounded-2xl p-4 overflow-hidden min-h-[120px]">
+                            <h3 class="text-sm font-bold text-indigo-400 mb-3 shrink-0 border-b border-slate-800 pb-2 flex items-center justify-between">
+                                <span><i class="fa-solid fa-child mr-1.5"></i>${child.name} の通知</span>
+                                <span class="text-xs text-slate-500 bg-slate-800 px-2 py-0.5 rounded-full">${childNotifs.length}件</span>
+                            </h3>
+                            <div class="flex-1 overflow-y-auto space-y-3 pr-1">
+                                ${childNotifs.length === 0 ? `<p class="text-xs text-slate-500 py-2">通知はありません</p>` : childNotifs.map(notif => `
+                                    <div class="flex flex-col bg-slate-950/50 p-3 rounded-xl border border-slate-800 shadow-sm">
+                                        <span class="text-sm text-slate-300 font-medium">${notif.message}</span>
+                                        <span class="text-[10px] text-slate-500 mt-1.5"><i class="fa-regular fa-clock mr-1"></i>${notif.timestamp}</span>
+                                    </div>
+                                `).join('')}
+                            </div>
+                        </div>
+                    `;
+                });
+                
+                // 削除されたアカウントの通知がある場合は「その他」枠として追加
+                const otherNotifs = notifications.filter(n => n.childId === 'deleted');
+                if (otherNotifs.length > 0) {
+                    html += `
+                        <div class="flex-1 flex flex-col bg-slate-900 border border-slate-800 rounded-2xl p-4 overflow-hidden min-h-[120px]">
+                            <h3 class="text-sm font-bold text-slate-400 mb-3 shrink-0 border-b border-slate-800 pb-2">
+                                <i class="fa-solid fa-triangle-exclamation mr-1.5"></i>システム・その他
+                            </h3>
+                            <div class="flex-1 overflow-y-auto space-y-3 pr-1">
+                                ${otherNotifs.map(notif => `
+                                    <div class="flex flex-col bg-slate-950/50 p-3 rounded-xl border border-slate-800 shadow-sm">
+                                        <span class="text-sm text-slate-300 font-medium">${notif.message}</span>
+                                        <span class="text-[10px] text-slate-500 mt-1.5"><i class="fa-regular fa-clock mr-1"></i>${notif.timestamp}</span>
+                                    </div>
+                                `).join('')}
+                            </div>
+                        </div>
+                    `;
+                }
+            }
         }
+        
+        html += `
+                </div>
+            </div>
+        `;
+        tabContainer.innerHTML = html;
     }
     
     // 5. 設定タブ (親専用・子専用メニューの切り替え)
@@ -659,7 +733,7 @@ function updateChildName() {
     child.name = newName;
     
     showToast(`名前を「${newName}」に変更しました！`);
-    addNotification(`【${oldName}】の名前が「${newName}」に変更されました。`);
+    addNotification(child.id, newName, `【${oldName}】の名前が「${newName}」に変更されました。`); // 変更後
     
     // バッジ等の再表示
     const badge = document.getElementById('role-badge');
@@ -682,7 +756,7 @@ function deleteChildAccount() {
             children = children.filter(c => c.id !== currentUserId);
             
             showToast(`「${name}」のアカウントを削除しました。`);
-            addNotification(`アカウント「${name}」が削除されました。`);
+            addNotification('deleted', name, `アカウント「${name}」が削除されました。`); // 変更後
             
             logout();
             renderLoginScreen();
