@@ -522,17 +522,16 @@ function updateUI() {
     if (currentTab === 'notifications') {
         const tabContainer = document.getElementById('tab-notifications');
         
-        // 画面の約75%の高さを確保し、その中で要素を分割するレイアウト
+        // 全体のコンテナ
         let html = `
             <div class="flex flex-col h-[75vh] gap-4">
                 <div class="flex items-center justify-between shrink-0">
                     <h2 class="text-lg font-bold"><i class="fa-solid fa-bell text-indigo-400 mr-1.5"></i>通知box</h2>
                 </div>
-                <div class="flex-1 flex flex-col gap-4">
         `;
 
         if (currentRole === 'child') {
-            // 子アカウントの場合：自分の通知だけを抽出して表示
+            // 子アカウントの場合：自分の通知だけを抽出して表示（変更なし）
             const childNotifs = notifications.filter(n => n.childId === currentUserId);
             html += `
                 <div class="flex-1 bg-slate-900 border border-slate-800 rounded-2xl p-4 overflow-y-auto">
@@ -547,20 +546,23 @@ function updateUI() {
                 </div>
             `;
         } else if (currentRole === 'parent') {
-            // 親アカウントの場合：存在する子アカウントごとに枠を作成 (flex-1で均等に縦分割)
+            // 親アカウントの場合：横並び (flex-row) のコンテナを作成し、横スクロール (overflow-x-auto) を適用
+            html += `<div class="flex-1 flex flex-row gap-4 overflow-x-auto pb-2">`;
+            
             if (children.length === 0 && notifications.filter(n => n.childId === 'deleted').length === 0) {
-                html += `<div class="bg-slate-900 border border-slate-800 rounded-2xl p-5 text-center text-slate-500 text-xs">通知はまだありません</div>`;
+                html += `<div class="w-full bg-slate-900 border border-slate-800 rounded-2xl p-5 text-center text-slate-500 text-xs flex items-center justify-center">通知はまだありません</div>`;
             } else {
                 children.forEach(child => {
                     const childNotifs = notifications.filter(n => n.childId === child.id);
+                    // 各アカウントの枠を幅固定(w-80)・縮小不可(shrink-0)にして横に並べる
                     html += `
-                        <div class="flex-1 flex flex-col bg-slate-900 border border-slate-800 rounded-2xl p-4 overflow-hidden min-h-[120px]">
+                        <div class="w-80 shrink-0 flex flex-col bg-slate-900 border border-slate-800 rounded-2xl p-4 h-full">
                             <h3 class="text-sm font-bold text-indigo-400 mb-3 shrink-0 border-b border-slate-800 pb-2 flex items-center justify-between">
                                 <span><i class="fa-solid fa-child mr-1.5"></i>${child.name} の通知</span>
                                 <span class="text-xs text-slate-500 bg-slate-800 px-2 py-0.5 rounded-full">${childNotifs.length}件</span>
                             </h3>
                             <div class="flex-1 overflow-y-auto space-y-3 pr-1">
-                                ${childNotifs.length === 0 ? `<p class="text-xs text-slate-500 py-2">通知はありません</p>` : childNotifs.map(notif => `
+                                ${childNotifs.length === 0 ? `<p class="text-xs text-slate-500 py-2 text-center">通知はありません</p>` : childNotifs.map(notif => `
                                     <div class="flex flex-col bg-slate-950/50 p-3 rounded-xl border border-slate-800 shadow-sm">
                                         <span class="text-sm text-slate-300 font-medium">${notif.message}</span>
                                         <span class="text-[10px] text-slate-500 mt-1.5"><i class="fa-regular fa-clock mr-1"></i>${notif.timestamp}</span>
@@ -571,13 +573,14 @@ function updateUI() {
                     `;
                 });
                 
-                // 削除されたアカウントの通知がある場合は「その他」枠として追加
+                // 削除されたアカウントの通知 (システム・その他)
                 const otherNotifs = notifications.filter(n => n.childId === 'deleted');
                 if (otherNotifs.length > 0) {
                     html += `
-                        <div class="flex-1 flex flex-col bg-slate-900 border border-slate-800 rounded-2xl p-4 overflow-hidden min-h-[120px]">
-                            <h3 class="text-sm font-bold text-slate-400 mb-3 shrink-0 border-b border-slate-800 pb-2">
-                                <i class="fa-solid fa-triangle-exclamation mr-1.5"></i>システム・その他
+                        <div class="w-80 shrink-0 flex flex-col bg-slate-900 border border-slate-800 rounded-2xl p-4 h-full">
+                            <h3 class="text-sm font-bold text-slate-400 mb-3 shrink-0 border-b border-slate-800 pb-2 flex items-center justify-between">
+                                <span><i class="fa-solid fa-triangle-exclamation mr-1.5"></i>システム・その他</span>
+                                <span class="text-xs text-slate-500 bg-slate-800 px-2 py-0.5 rounded-full">${otherNotifs.length}件</span>
                             </h3>
                             <div class="flex-1 overflow-y-auto space-y-3 pr-1">
                                 ${otherNotifs.map(notif => `
@@ -591,10 +594,10 @@ function updateUI() {
                     `;
                 }
             }
+            html += `</div>`; // 親の横並びコンテナ終了
         }
         
         html += `
-                </div>
             </div>
         `;
         tabContainer.innerHTML = html;
