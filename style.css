@@ -1,6 +1,23 @@
 /* style.css */
 
-/* アコーディオンのスムーズなアニメーション用 */
+/* アコーディオンのスムーズなアニメーション用 (既存のコード) */
 .accordion-content {
     transition: max-height 0.3s ease-out, opacity 0.3s ease-out;
+}
+
+/* スクロールバーのカスタマイズ (以下を追記) */
+::-webkit-scrollbar {
+    height: 6px;
+    width: 6px;
+}
+::-webkit-scrollbar-track {
+    background: rgba(30, 41, 59, 0.5); 
+    border-radius: 10px;
+}
+::-webkit-scrollbar-thumb {
+    background: rgba(99, 102, 241, 0.5); 
+    border-radius: 10px;
+}
+::-webkit-scrollbar-thumb:hover {
+    background: rgba(99, 102, 241, 0.8); 
 }
