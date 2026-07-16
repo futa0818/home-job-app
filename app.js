@@ -1,15 +1,17 @@
 // app.js
 
 // --- 状態管理 (State) ---
-let currentRole = null; // 'child' or 'parent'
-let currentUserId = null; // どの子アカウントでログインしているか
-let viewingChildId = null; // 親がどの子アカウントの詳細を見ているか
-let currentTab = 'main'; // 'main', 'notifications', 'report', 'settings'
+let currentRole = null; 
+let currentUserId = null; 
+let viewingChildId = null; 
+let currentTab = 'main'; 
 
-let parentPassword = 'fuu18'; // 親アカウントの初期パスワード
+// ★追加：親アカウントのレポート画面でどのアカウントを表示するか
+let reportSelectedTarget = 'all'; // 'all' または childId
+
+let parentPassword = 'fuu18'; 
 let parentTheme = 'default';
 
-// 子アカウントの配列（最大4人）。初期状態から「親・子・追加」の3枚のカードを見せるため、デフォルトで1人セット
 let children = [
     {
         id: 'child_1',
@@ -23,10 +25,9 @@ let children = [
     }
 ];
 
-let lastActiveDate = ""; // 日付リセット判定用
-let notifications = []; // グローバルな通知リスト
+let lastActiveDate = ""; 
+let notifications = []; 
 
-// 初期のお手伝いメニュー設定 (10個)
 let availableJobs = [
     { title: '風呂洗い', price: 50, icon: 'fa-bath' },
     { title: '洗濯物たたみ', price: 50, icon: 'fa-shirt' },
@@ -43,13 +44,10 @@ let availableJobs = [
 // --- ログイン画面の動的生成 ---
 function renderLoginScreen() {
     const container = document.getElementById('login-cards-container');
-    
-    // ★ ここでHTML側の縦並び設定(space-y-4)を上書きし、強制的に横並びにします
     container.className = "flex flex-wrap justify-center gap-3 sm:gap-4 mt-2";
     
     let html = '';
 
-    // 1. 親として入るボタン (青色・正方形)
     html += `
         <button onclick="promptParentLogin()" class="w-24 sm:w-28 aspect-square shrink-0 bg-indigo-600 hover:bg-indigo-500 text-white font-semibold rounded-2xl transition duration-200 flex flex-col items-center justify-center p-3 shadow-lg shadow-indigo-600/20">
             <i class="fa-solid fa-user-tie text-3xl mb-2"></i>
@@ -57,7 +55,6 @@ function renderLoginScreen() {
         </button>
     `;
 
-    // 2. 作成された子アカウントのボタン (無色・正方形)
     children.forEach(child => {
         html += `
             <button onclick="loginAsChild('${child.id}')" class="w-24 sm:w-28 aspect-square shrink-0 bg-slate-800 hover:bg-slate-700 text-white font-semibold rounded-2xl transition duration-200 flex flex-col items-center justify-center p-3 border border-slate-700 shadow-md">
@@ -67,7 +64,6 @@ function renderLoginScreen() {
         `;
     });
 
-    // 3. 子アカウントの追加ボタン (無色・正方形)
     if (children.length < 4) {
         html += `
             <button onclick="promptAddChild()" class="w-24 sm:w-28 aspect-square shrink-0 bg-slate-800 hover:bg-slate-700 text-slate-400 font-semibold rounded-2xl transition duration-200 flex flex-col items-center justify-center p-3 border border-slate-700 border-dashed hover:border-slate-500">
@@ -99,10 +95,9 @@ function promptAddChild() {
     }
 }
 
-// 初期描画
 renderLoginScreen();
 
-// --- リアルタイム時計機能 (JST) ---
+// --- リアルタイム時計機能 ---
 function updateClock() {
     const now = new Date();
     const jstString = now.toLocaleString("en-US", { timeZone: "Asia/Tokyo" });
@@ -123,13 +118,12 @@ function updateClock() {
     if(clockEl) clockEl.innerText = timeString;
     if(clockMobileEl) clockMobileEl.innerText = timeString;
 
-    // 0時(日付変更)を跨いだ場合の自動リセット処理
     const currentDateStr = `${year}/${month}/${date}`;
     if (!lastActiveDate) {
         lastActiveDate = currentDateStr; 
     } else if (lastActiveDate !== currentDateStr) {
         lastActiveDate = currentDateStr; 
-        children.forEach(c => c.completedToday = []); // 全ての子の完了済みをクリア
+        children.forEach(c => c.completedToday = []); 
         if (currentRole) updateUI();
     }
 }
@@ -137,7 +131,6 @@ updateClock();
 setInterval(updateClock, 1000);
 
 // --- 通知機能 ---
-// 【変更後】引数に childId と childName を追加
 function addNotification(childId, childName, message) {
     const now = new Date();
     const jstString = now.toLocaleString("en-US", { timeZone: "Asia/Tokyo" });
@@ -197,11 +190,12 @@ function logout() {
     currentRole = null;
     currentUserId = null;
     viewingChildId = null;
+    reportSelectedTarget = 'all'; // ★ログアウト時にレポートのターゲットを初期化
+    
     applyTheme('default'); 
     document.getElementById('app-layout').classList.add('hidden');
     document.getElementById('screen-login').classList.remove('hidden');
     
-    // ↓この1行を追加して、ログイン画面を最新の状態に再描画します
     renderLoginScreen();
 }
 
@@ -224,12 +218,17 @@ function switchTab(tabName) {
             document.getElementById('tab-child-main').classList.remove('hidden');
         } else {
             document.getElementById('tab-parent-main').classList.remove('hidden');
-            // 親タブを開いたときはリスト画面にリセット
             backToParentList();
         }
     } else {
         document.getElementById(`tab-${tabName}`).classList.remove('hidden');
     }
+    updateUI();
+}
+
+// ★追加：親のレポート画面でアカウントを切り替える関数
+function changeReportTarget(target) {
+    reportSelectedTarget = target;
     updateUI();
 }
 
@@ -293,7 +292,7 @@ function submitProposal() {
     updateUI();
 }
 
-// --- 親のアクション (特定の子に対する処理) ---
+// --- 親のアクション ---
 function handleRequest(childId, id, isApproved) {
     const child = children.find(c => c.id === childId);
     if (!child) return;
@@ -307,11 +306,11 @@ function handleRequest(childId, id, isApproved) {
             child.totalAmount += req.price;
             child.confirmedHistory.unshift({ title: req.title, price: req.price, date: new Date().toLocaleDateString('ja-JP') });
             showToast(`「${req.title}」を承認しました！`);
-            addNotification(child.id, child.name, `【${child.name}】お手伝い申請「${req.title}」が許可されました。`); // 変更後
+            addNotification(child.id, child.name, `【${child.name}】お手伝い申請「${req.title}」が許可されました。`);
         } else {
             showToast(`「${req.title}」の申請を却下しました。`);
             child.completedToday = child.completedToday.filter(title => title !== req.title);
-            addNotification(child.id, child.name, `【${child.name}】お手伝い申請「${req.title}」が拒否されました。`); // 変更後
+            addNotification(child.id, child.name, `【${child.name}】お手伝い申請「${req.title}」が拒否されました。`);
         }
         updateUI();
     }
@@ -329,16 +328,15 @@ function handleProposal(childId, id, isApproved) {
         if (isApproved) {
             availableJobs.push({ title: prop.title, price: prop.price, icon: 'fa-star' });
             showToast(`提案「${prop.title}」を採用し、リストに追加しました！`);
-            addNotification(child.id, child.name, `【${child.name}】新メニュー「${prop.title}」の追加が許可されました。`); // 変更後
+            addNotification(child.id, child.name, `【${child.name}】新メニュー「${prop.title}」の追加が許可されました。`);
         } else {
             showToast(`提案「${prop.title}」を見送りました。`);
-            addNotification(child.id, child.name, `【${child.name}】新メニュー「${prop.title}」の追加が見送られました。`); // 変更後
+            addNotification(child.id, child.name, `【${child.name}】新メニュー「${prop.title}」の追加が見送られました。`);
         }
         updateUI();
     }
 }
 
-// --- 親の画面制御 ---
 function viewChildDetail(childId) {
     viewingChildId = childId;
     document.getElementById('parent-child-list-section').classList.add('hidden');
@@ -490,16 +488,61 @@ function updateUI() {
         }
     }
 
-    // 3. レポートタブ (全員の合算と履歴を展開)
+    // ★変更箇所：3. レポートタブ (子/親に応じた切り替え処理)
     if (currentTab === 'report') {
-        let grandTotal = 0;
+        const selectorContainer = document.getElementById('report-child-selector');
+        const reportTitle = document.getElementById('report-title');
+
+        let targetChildren = [];
+        
+        if (currentRole === 'child') {
+            // 子アカウントの場合：自分のデータのみを集計し、切り替えボタンは隠す
+            if (selectorContainer) selectorContainer.classList.add('hidden');
+            const child = children.find(c => c.id === currentUserId);
+            if (child) {
+                targetChildren = [child];
+                if (reportTitle) reportTitle.innerHTML = `<i class="fa-solid fa-chart-simple mr-1.5 text-indigo-400"></i>お手伝いレポート`;
+            }
+        } else if (currentRole === 'parent') {
+            // 親アカウントの場合：切り替えUIを表示する
+            if (selectorContainer) {
+                selectorContainer.classList.remove('hidden');
+                
+                let selectorHtml = `<button onclick="changeReportTarget('all')" class="shrink-0 px-4 py-2 rounded-xl text-sm font-medium transition ${reportSelectedTarget === 'all' ? 'bg-indigo-600 text-white shadow-md' : 'bg-slate-800 text-slate-400 hover:bg-slate-700 hover:text-white border border-slate-700'}">全員</button>`;
+                
+                children.forEach(c => {
+                    selectorHtml += `<button onclick="changeReportTarget('${c.id}')" class="shrink-0 px-4 py-2 rounded-xl text-sm font-medium transition ${reportSelectedTarget === c.id ? 'bg-indigo-600 text-white shadow-md' : 'bg-slate-800 text-slate-400 hover:bg-slate-700 hover:text-white border border-slate-700'}">${c.name}</button>`;
+                });
+                
+                selectorContainer.innerHTML = selectorHtml;
+            }
+
+            if (reportSelectedTarget === 'all') {
+                targetChildren = children;
+                if (reportTitle) reportTitle.innerHTML = `<i class="fa-solid fa-users mr-1.5 text-indigo-400"></i>お手伝いレポート (全体)`;
+            } else {
+                const child = children.find(c => c.id === reportSelectedTarget);
+                if (child) {
+                    targetChildren = [child];
+                    if (reportTitle) reportTitle.innerHTML = `<i class="fa-solid fa-child mr-1.5 text-indigo-400"></i>${child.name} のレポート`;
+                } else {
+                    targetChildren = children; // 削除などで見つからない場合のフォールバック
+                    reportSelectedTarget = 'all';
+                    if (reportTitle) reportTitle.innerHTML = `<i class="fa-solid fa-users mr-1.5 text-indigo-400"></i>お手伝いレポート (全体)`;
+                }
+            }
+        }
+
+        let totalAmount = 0;
         let allHistory = [];
-        children.forEach(c => {
-            grandTotal += c.totalAmount;
+        
+        // 対象の子アカウントリストから集計する
+        targetChildren.forEach(c => {
+            totalAmount += c.totalAmount;
             c.confirmedHistory.forEach(h => allHistory.push({...h, childName: c.name}));
         });
 
-        document.getElementById('report-total-amount').innerText = `¥${grandTotal.toLocaleString()}`;
+        document.getElementById('report-total-amount').innerText = `¥${totalAmount.toLocaleString()}`;
         document.getElementById('report-total-count').innerText = `${allHistory.length}回`;
 
         const reportHistoryList = document.getElementById('report-history-list');
@@ -509,7 +552,7 @@ function updateUI() {
             reportHistoryList.innerHTML = allHistory.map(item => `
                 <div class="flex items-center justify-between border-b border-slate-800/60 pb-2 last:border-0 last:pb-0 mt-2">
                     <div>
-                        <p class="text-sm font-medium text-slate-200">${item.title} <span class="text-xs text-indigo-400 ml-1">(${item.childName})</span></p>
+                        <p class="text-sm font-medium text-slate-200">${item.title} ${targetChildren.length > 1 ? `<span class="text-xs text-indigo-400 ml-1">(${item.childName})</span>` : ''}</p>
                         <p class="text-[10px] text-slate-500">${item.date}</p>
                     </div>
                     <span class="text-sm font-bold text-emerald-400">¥${item.price}</span>
@@ -522,7 +565,6 @@ function updateUI() {
     if (currentTab === 'notifications') {
         const tabContainer = document.getElementById('tab-notifications');
         
-        // 全体のコンテナ
         let html = `
             <div class="flex flex-col h-[75vh] gap-4">
                 <div class="flex items-center justify-between shrink-0">
@@ -531,7 +573,6 @@ function updateUI() {
         `;
 
         if (currentRole === 'child') {
-            // 子アカウントの場合：自分の通知だけを抽出して表示（変更なし）
             const childNotifs = notifications.filter(n => n.childId === currentUserId);
             html += `
                 <div class="flex-1 bg-slate-900 border border-slate-800 rounded-2xl p-4 overflow-y-auto">
@@ -546,7 +587,6 @@ function updateUI() {
                 </div>
             `;
         } else if (currentRole === 'parent') {
-            // 親アカウントの場合：横並び (flex-row) のコンテナを作成し、横スクロール (overflow-x-auto) を適用
             html += `<div class="flex-1 flex flex-row gap-4 overflow-x-auto pb-2">`;
             
             if (children.length === 0 && notifications.filter(n => n.childId === 'deleted').length === 0) {
@@ -554,7 +594,6 @@ function updateUI() {
             } else {
                 children.forEach(child => {
                     const childNotifs = notifications.filter(n => n.childId === child.id);
-                    // 各アカウントの枠を幅固定(w-80)・縮小不可(shrink-0)にして横に並べる
                     html += `
                         <div class="w-80 shrink-0 flex flex-col bg-slate-900 border border-slate-800 rounded-2xl p-4 h-full">
                             <h3 class="text-sm font-bold text-indigo-400 mb-3 shrink-0 border-b border-slate-800 pb-2 flex items-center justify-between">
@@ -573,7 +612,6 @@ function updateUI() {
                     `;
                 });
                 
-                // 削除されたアカウントの通知 (システム・その他)
                 const otherNotifs = notifications.filter(n => n.childId === 'deleted');
                 if (otherNotifs.length > 0) {
                     html += `
@@ -594,7 +632,7 @@ function updateUI() {
                     `;
                 }
             }
-            html += `</div>`; // 親の横並びコンテナ終了
+            html += `</div>`; 
         }
         
         html += `
@@ -603,7 +641,7 @@ function updateUI() {
         tabContainer.innerHTML = html;
     }
     
-    // 5. 設定タブ (親専用・子専用メニューの切り替え)
+    // 5. 設定タブ
     const passwordSettings = document.getElementById('parent-password-settings');
     if (passwordSettings) {
         if (currentRole === 'parent') {
@@ -719,7 +757,6 @@ function applyTheme(color) {
     styleTag.innerHTML = css;
 }
 
-// --- 子アカウントの名称変更と削除 ---
 function updateChildName() {
     const child = children.find(c => c.id === currentUserId);
     if (!child) return;
@@ -729,16 +766,14 @@ function updateChildName() {
 
     if (!newName) { showToast('名前を入力してください。'); return; }
 
-    // 先に親パスワード認証
     if (!verifyParentPassword()) { alert('パスワードが間違っているか、キャンセルされました。'); return; }
 
     const oldName = child.name;
     child.name = newName;
     
     showToast(`名前を「${newName}」に変更しました！`);
-    addNotification(child.id, newName, `【${oldName}】の名前が「${newName}」に変更されました。`); // 変更後
+    addNotification(child.id, newName, `【${oldName}】の名前が「${newName}」に変更されました。`);
     
-    // バッジ等の再表示
     const badge = document.getElementById('role-badge');
     if (badge) badge.innerText = `子モード (${child.name})`;
     
@@ -749,17 +784,15 @@ function deleteChildAccount() {
     const child = children.find(c => c.id === currentUserId);
     if (!child) return;
 
-    // 先に親パスワード認証
     if (!verifyParentPassword()) { alert('パスワードが間違っているか、キャンセルされました。'); return; }
 
-    // 2回確認する
     if (confirm(`本当にアカウント「${child.name}」を削除しますか？\nこの操作は取り消せません。`)) {
         if (confirm(`【最終確認】本当に削除してよろしいですか？\nこれまでの獲得金額（¥${child.totalAmount.toLocaleString()}）や履歴データもすべて消去されます。`)) {
             const name = child.name;
             children = children.filter(c => c.id !== currentUserId);
             
             showToast(`「${name}」のアカウントを削除しました。`);
-            addNotification('deleted', name, `アカウント「${name}」が削除されました。`); // 変更後
+            addNotification('deleted', name, `アカウント「${name}」が削除されました。`);
             
             logout();
             renderLoginScreen();
