@@ -6,6 +6,8 @@
     <title>家庭内アルバイト管理アプリ - スプリント1</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- ★追加: グラフ描画のためのChart.js -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <link rel="stylesheet" href="style.css">
 </head>
 <body class="bg-slate-950 text-slate-100 font-sans min-h-screen flex flex-col">
@@ -150,27 +152,35 @@
                 </div>
 
                 <div class="flex items-center justify-between">
-                    <!-- タイトル部分を動的に変更するためIDを付与 -->
                     <h2 id="report-title" class="text-lg font-bold">お手伝いレポート</h2>
-                    <select class="bg-slate-900 border border-slate-800 rounded-xl px-3 py-1.5 text-xs text-slate-300 focus:outline-none">
-                        <option>今月</option>
-                    </select>
                 </div>
 
-                <div class="bg-slate-900 border border-slate-800 rounded-2xl p-5 grid grid-cols-2 gap-4">
-                    <div class="border-r border-slate-800 pr-2">
-                        <p class="text-xs text-slate-400 mb-1">承認済み合計金額</p>
-                        <p class="text-2xl font-bold text-emerald-400" id="report-total-amount">¥0</p>
+                <!-- 1. 成果表示部（左右に分ける） -->
+                <div class="grid grid-cols-2 gap-4">
+                    <div class="bg-slate-900 border border-slate-800 rounded-2xl p-5 flex flex-col items-center justify-center text-center">
+                        <p class="text-xs text-slate-400 mb-2"><i class="fa-solid fa-calendar-days mr-1"></i>今月全体の成果</p>
+                        <p class="text-2xl sm:text-3xl font-bold text-emerald-400 mb-1" id="report-month-total">¥0</p>
+                        <p class="text-sm text-indigo-400 font-medium" id="report-month-count">0回</p>
                     </div>
-                    <div class="pl-2">
-                        <p class="text-xs text-slate-400 mb-1">実施した回数</p>
-                        <p class="text-2xl font-bold text-indigo-400" id="report-total-count">0回</p>
+                    <div class="bg-slate-900 border border-slate-800 rounded-2xl p-5 flex flex-col items-center justify-center text-center">
+                        <p class="text-xs text-slate-400 mb-2"><i class="fa-solid fa-sun mr-1"></i>今日の成果</p>
+                        <p class="text-2xl sm:text-3xl font-bold text-emerald-400 mb-1" id="report-today-total">¥0</p>
+                        <p class="text-sm text-indigo-400 font-medium" id="report-today-count">0回</p>
                     </div>
                 </div>
 
+                <!-- 2. グラフ領域（追加） -->
+                <div class="bg-slate-900 border border-slate-800 rounded-2xl p-4">
+                    <h3 class="text-sm font-semibold text-slate-300 mb-3 text-center">今月の成果推移</h3>
+                    <div class="relative w-full h-[250px]">
+                        <canvas id="monthlyChart"></canvas>
+                    </div>
+                </div>
+
+                <!-- 3. 承認済みお手伝い一覧 -->
                 <div class="bg-slate-900 border border-slate-800 rounded-2xl p-5">
                     <h3 class="text-sm font-semibold text-slate-300 mb-3">承認済みお手伝い一覧</h3>
-                    <div id="report-history-list" class="space-y-3">
+                    <div id="report-history-list" class="space-y-3 max-h-60 overflow-y-auto pr-2">
                         <p class="text-xs text-slate-500 text-center py-4">承認されたデータがここに表示されます</p>
                     </div>
                 </div>
