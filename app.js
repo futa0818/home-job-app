@@ -488,7 +488,7 @@ function updateUI() {
         }
     }
 
-    // ★変更箇所：3. レポートタブ (子/親に応じた切り替え処理)
+    // ★変更箇所：3. レポートタブ (子/親に応じた切り替え処理とグラフの描画)
     if (currentTab === 'report') {
         const selectorContainer = document.getElementById('report-child-selector');
         const reportTitle = document.getElementById('report-title');
@@ -496,7 +496,6 @@ function updateUI() {
         let targetChildren = [];
         
         if (currentRole === 'child') {
-            // 子アカウントの場合：自分のデータのみを集計し、切り替えボタンは隠す
             if (selectorContainer) selectorContainer.classList.add('hidden');
             const child = children.find(c => c.id === currentUserId);
             if (child) {
@@ -504,16 +503,12 @@ function updateUI() {
                 if (reportTitle) reportTitle.innerHTML = `<i class="fa-solid fa-chart-simple mr-1.5 text-indigo-400"></i>お手伝いレポート`;
             }
         } else if (currentRole === 'parent') {
-            // 親アカウントの場合：切り替えUIを表示する
             if (selectorContainer) {
                 selectorContainer.classList.remove('hidden');
-                
                 let selectorHtml = `<button onclick="changeReportTarget('all')" class="shrink-0 px-4 py-2 rounded-xl text-sm font-medium transition ${reportSelectedTarget === 'all' ? 'bg-indigo-600 text-white shadow-md' : 'bg-slate-800 text-slate-400 hover:bg-slate-700 hover:text-white border border-slate-700'}">全員</button>`;
-                
                 children.forEach(c => {
                     selectorHtml += `<button onclick="changeReportTarget('${c.id}')" class="shrink-0 px-4 py-2 rounded-xl text-sm font-medium transition ${reportSelectedTarget === c.id ? 'bg-indigo-600 text-white shadow-md' : 'bg-slate-800 text-slate-400 hover:bg-slate-700 hover:text-white border border-slate-700'}">${c.name}</button>`;
                 });
-                
                 selectorContainer.innerHTML = selectorHtml;
             }
 
@@ -526,25 +521,157 @@ function updateUI() {
                     targetChildren = [child];
                     if (reportTitle) reportTitle.innerHTML = `<i class="fa-solid fa-child mr-1.5 text-indigo-400"></i>${child.name} のレポート`;
                 } else {
-                    targetChildren = children; // 削除などで見つからない場合のフォールバック
+                    targetChildren = children;
                     reportSelectedTarget = 'all';
                     if (reportTitle) reportTitle.innerHTML = `<i class="fa-solid fa-users mr-1.5 text-indigo-400"></i>お手伝いレポート (全体)`;
                 }
             }
         }
 
-        let totalAmount = 0;
         let allHistory = [];
-        
-        // 対象の子アカウントリストから集計する
         targetChildren.forEach(c => {
-            totalAmount += c.totalAmount;
             c.confirmedHistory.forEach(h => allHistory.push({...h, childName: c.name}));
         });
 
-        document.getElementById('report-total-amount').innerText = `¥${totalAmount.toLocaleString()}`;
-        document.getElementById('report-total-count').innerText = `${allHistory.length}回`;
+        // 成果の集計処理（今月と今日）
+        const now = new Date();
+        const currentYear = now.getFullYear();
+        const currentMonth = now.getMonth() + 1;
+        const currentDay = now.getDate();
+        
+        const currentMonthPrefix = `${currentYear}/${currentMonth}`;
 
+        let monthTotalAmount = 0;
+        let monthTotalCount = 0;
+        let todayTotalAmount = 0;
+        let todayTotalCount = 0;
+
+        // グラフ用の日別データ
+        const dailyData = {}; 
+
+        allHistory.forEach(item => {
+            const dateParts = item.date.split('/'); // 形式は YYYY/M/D を想定
+            if (dateParts.length === 3) {
+                const itemYear = parseInt(dateParts[0], 10);
+                const itemMonth = parseInt(dateParts[1], 10);
+                const itemDay = parseInt(dateParts[2], 10);
+                const itemMonthPrefix = `${itemYear}/${itemMonth}`;
+
+                // 今月の集計
+                if (itemMonthPrefix === currentMonthPrefix) {
+                    monthTotalAmount += item.price;
+                    monthTotalCount++;
+
+                    if (!dailyData[itemDay]) {
+                        dailyData[itemDay] = { amount: 0, count: 0 };
+                    }
+                    dailyData[itemDay].amount += item.price;
+                    dailyData[itemDay].count++;
+                }
+                // 今日の集計
+                if (itemYear === currentYear && itemMonth === currentMonth && itemDay === currentDay) {
+                    todayTotalAmount += item.price;
+                    todayTotalCount++;
+                }
+            }
+        });
+
+        // UIに数値を反映
+        document.getElementById('report-month-total').innerText = `¥${monthTotalAmount.toLocaleString()}`;
+        document.getElementById('report-month-count').innerText = `${monthTotalCount}回`;
+        document.getElementById('report-today-total').innerText = `¥${todayTotalAmount.toLocaleString()}`;
+        document.getElementById('report-today-count').innerText = `${todayTotalCount}回`;
+
+        // --- グラフデータの作成と描画 ---
+        const lastDay = new Date(currentYear, currentMonth, 0).getDate();
+        const labels = [];
+        const amountData = [];
+        const countData = [];
+
+        for (let i = 1; i <= lastDay; i++) {
+            labels.push(`${i}日`);
+            if (dailyData[i]) {
+                amountData.push(dailyData[i].amount);
+                countData.push(dailyData[i].count);
+            } else {
+                amountData.push(0);
+                countData.push(0);
+            }
+        }
+
+        const ctx = document.getElementById('monthlyChart').getContext('2d');
+        // 既存のグラフがあれば破棄して常に最新を描画する
+        if (window.myReportChart) {
+            window.myReportChart.destroy();
+        }
+
+        const textColor = '#94a3b8';
+        const gridColor = 'rgba(51, 65, 85, 0.5)';
+
+        window.myReportChart = new Chart(ctx, {
+            type: 'bar',
+            data: {
+                labels: labels,
+                datasets: [
+                    {
+                        type: 'line',
+                        label: '合計額 (¥)',
+                        data: amountData,
+                        borderColor: '#34d399', // emerald-400
+                        backgroundColor: '#34d399',
+                        borderWidth: 2,
+                        yAxisID: 'y-amount',
+                        tension: 0.1,
+                        pointRadius: 3
+                    },
+                    {
+                        type: 'bar',
+                        label: '合計回数 (回)',
+                        data: countData,
+                        backgroundColor: 'rgba(129, 140, 248, 0.8)', // indigo-400
+                        borderColor: '#818cf8',
+                        borderWidth: 1,
+                        yAxisID: 'y-count',
+                        borderRadius: 4
+                    }
+                ]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                interaction: {
+                    mode: 'index',
+                    intersect: false,
+                },
+                scales: {
+                    'y-amount': {
+                        type: 'linear',
+                        position: 'left',
+                        title: { display: true, text: '金額 (¥)', color: textColor, font: { size: 10 } },
+                        ticks: { color: textColor, font: { size: 10 } },
+                        grid: { color: gridColor }
+                    },
+                    'y-count': {
+                        type: 'linear',
+                        position: 'right',
+                        title: { display: true, text: '回数 (回)', color: textColor, font: { size: 10 } },
+                        ticks: { color: textColor, stepSize: 1, font: { size: 10 } },
+                        grid: { drawOnChartArea: false } // 目盛線が重なるのを防ぐ
+                    },
+                    x: {
+                        ticks: { color: textColor, font: { size: 10 }, maxRotation: 45 },
+                        grid: { display: false }
+                    }
+                },
+                plugins: {
+                    legend: {
+                        labels: { color: textColor, font: { size: 11 }, boxWidth: 12 }
+                    }
+                }
+            }
+        });
+
+        // --- 承認済みお手伝い一覧の描画 ---
         const reportHistoryList = document.getElementById('report-history-list');
         if (allHistory.length === 0) {
             reportHistoryList.innerHTML = `<p class="text-xs text-slate-500 text-center py-4">承認されたデータがここに表示されます</p>`;
