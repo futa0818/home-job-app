@@ -1,34 +1,7 @@
 // app.js
 
-// --- 状態管理 (State) ---
-let currentRole = null; 
-let currentUserId = null; 
-let viewingChildId = null; 
-let currentTab = 'main'; 
-
-// ★追加：親アカウントのレポート画面でどのアカウントを表示するか
-let reportSelectedTarget = 'all'; // 'all' または childId
-
-let parentPassword = 'fuu18'; 
-let parentTheme = 'default';
-
-let children = [
-    {
-        id: 'child_1',
-        name: '子供',
-        theme: 'default',
-        totalAmount: 0,
-        completedToday: [],
-        pendingRequests: [],
-        pendingProposals: [],
-        confirmedHistory: []
-    }
-];
-
-let lastActiveDate = ""; 
-let notifications = []; 
-
-let availableJobs = [
+// --- 初期ジョブの定義 ---
+const INITIAL_JOBS = [
     { title: '風呂洗い', price: 50, icon: 'fa-bath' },
     { title: '洗濯物たたみ', price: 50, icon: 'fa-shirt' },
     { title: '洗濯物干し', price: 50, icon: 'fa-socks' },
@@ -40,6 +13,66 @@ let availableJobs = [
     { title: '食器だし', price: 30, icon: 'fa-kitchen-set' },
     { title: '玄関はわき', price: 50, icon: 'fa-broom' }
 ];
+
+// --- 状態管理 (State) ---
+let currentRole = null; 
+let currentUserId = null; 
+let viewingChildId = null; 
+let currentTab = 'main'; 
+let reportSelectedTarget = 'all';
+
+// 保存されるデータ群
+let parentPassword = 'fuu18'; 
+let parentTheme = 'default';
+let children = [];
+let lastActiveDate = ""; 
+let notifications = []; 
+let availableJobs = [];
+
+// --- ローカルストレージ機能 ---
+function loadState() {
+    const saved = localStorage.getItem('familyApp_state');
+    if (saved) {
+        const state = JSON.parse(saved);
+        children = state.children || [];
+        availableJobs = state.availableJobs || [...INITIAL_JOBS];
+        notifications = state.notifications || [];
+        lastActiveDate = state.lastActiveDate || "";
+        parentPassword = state.parentPassword || 'fuu18';
+        parentTheme = state.parentTheme || 'default';
+    } else {
+        // 初回アクセス時の初期データ
+        children = [
+            {
+                id: 'child_1',
+                name: '子供',
+                theme: 'default',
+                totalAmount: 0,
+                completedToday: [],
+                pendingRequests: [],
+                pendingProposals: [],
+                confirmedHistory: []
+            }
+        ];
+        availableJobs = [...INITIAL_JOBS];
+    }
+}
+
+function saveState() {
+    const state = {
+        children,
+        availableJobs,
+        notifications,
+        lastActiveDate,
+        parentPassword,
+        parentTheme
+    };
+    localStorage.setItem('familyApp_state', JSON.stringify(state));
+}
+
+// アプリ起動時にデータをロード
+loadState();
+
 
 // --- ログイン画面の動的生成 ---
 function renderLoginScreen() {
@@ -90,6 +123,7 @@ function promptAddChild() {
             pendingProposals: [],
             confirmedHistory: []
         });
+        saveState(); // ★保存
         showToast(`${name.trim()}のアカウントを追加しました！`);
         renderLoginScreen();
     }
@@ -121,9 +155,11 @@ function updateClock() {
     const currentDateStr = `${year}/${month}/${date}`;
     if (!lastActiveDate) {
         lastActiveDate = currentDateStr; 
+        saveState(); // ★保存
     } else if (lastActiveDate !== currentDateStr) {
         lastActiveDate = currentDateStr; 
         children.forEach(c => c.completedToday = []); 
+        saveState(); // ★保存
         if (currentRole) updateUI();
     }
 }
@@ -144,6 +180,7 @@ function addNotification(childId, childName, message) {
         message: message, 
         timestamp: timestamp 
     });
+    saveState(); // ★保存
 }
 
 // --- ログイン・画面切り替え処理 ---
@@ -190,7 +227,7 @@ function logout() {
     currentRole = null;
     currentUserId = null;
     viewingChildId = null;
-    reportSelectedTarget = 'all'; // ★ログアウト時にレポートのターゲットを初期化
+    reportSelectedTarget = 'all'; 
     
     applyTheme('default'); 
     document.getElementById('app-layout').classList.add('hidden');
@@ -226,7 +263,6 @@ function switchTab(tabName) {
     updateUI();
 }
 
-// ★追加：親のレポート画面でアカウントを切り替える関数
 function changeReportTarget(target) {
     reportSelectedTarget = target;
     updateUI();
@@ -260,6 +296,7 @@ function updateParentPassword() {
     if (newInput.value !== confirmInput.value) { showToast('新しいパスワードと確認用パスワードが一致しません。'); return; }
 
     parentPassword = newInput.value;
+    saveState(); // ★保存
     showToast('パスワードを正常に変更しました！');
     currentInput.value = ''; newInput.value = ''; confirmInput.value = '';
 }
@@ -272,6 +309,7 @@ function requestJob(title, price, icon) {
     child.pendingRequests.unshift({ id: Date.now(), title: title, price: price, icon: icon, time: 'たった今' });
     child.completedToday.push(title);
     
+    saveState(); // ★保存
     showToast(`「${title}」の実行を親に申請しました！`);
     updateUI();
 }
@@ -286,6 +324,8 @@ function submitProposal() {
     if (!titleInput.value || !priceInput.value) { showToast('項目名と金額を入力してください'); return; }
 
     child.pendingProposals.unshift({ id: Date.now(), title: titleInput.value, price: parseInt(priceInput.value), time: 'たった今' });
+    
+    saveState(); // ★保存
     showToast(`新メニュー「${titleInput.value}」を提案しました！`);
     
     titleInput.value = ''; priceInput.value = '';
@@ -312,6 +352,7 @@ function handleRequest(childId, id, isApproved) {
             child.completedToday = child.completedToday.filter(title => title !== req.title);
             addNotification(child.id, child.name, `【${child.name}】お手伝い申請「${req.title}」が拒否されました。`);
         }
+        saveState(); // ★保存
         updateUI();
     }
 }
@@ -333,6 +374,7 @@ function handleProposal(childId, id, isApproved) {
             showToast(`提案「${prop.title}」を見送りました。`);
             addNotification(child.id, child.name, `【${child.name}】新メニュー「${prop.title}」の追加が見送られました。`);
         }
+        saveState(); // ★保存
         updateUI();
     }
 }
@@ -488,7 +530,7 @@ function updateUI() {
         }
     }
 
-    // ★変更箇所：3. レポートタブ (子/親に応じた切り替え処理とグラフの描画)
+    // 3. レポートタブ 
     if (currentTab === 'report') {
         const selectorContainer = document.getElementById('report-child-selector');
         const reportTitle = document.getElementById('report-title');
@@ -550,14 +592,13 @@ function updateUI() {
         const dailyData = {}; 
 
         allHistory.forEach(item => {
-            const dateParts = item.date.split('/'); // 形式は YYYY/M/D を想定
+            const dateParts = item.date.split('/');
             if (dateParts.length === 3) {
                 const itemYear = parseInt(dateParts[0], 10);
                 const itemMonth = parseInt(dateParts[1], 10);
                 const itemDay = parseInt(dateParts[2], 10);
                 const itemMonthPrefix = `${itemYear}/${itemMonth}`;
 
-                // 今月の集計
                 if (itemMonthPrefix === currentMonthPrefix) {
                     monthTotalAmount += item.price;
                     monthTotalCount++;
@@ -568,7 +609,6 @@ function updateUI() {
                     dailyData[itemDay].amount += item.price;
                     dailyData[itemDay].count++;
                 }
-                // 今日の集計
                 if (itemYear === currentYear && itemMonth === currentMonth && itemDay === currentDay) {
                     todayTotalAmount += item.price;
                     todayTotalCount++;
@@ -600,7 +640,6 @@ function updateUI() {
         }
 
         const ctx = document.getElementById('monthlyChart').getContext('2d');
-        // 既存のグラフがあれば破棄して常に最新を描画する
         if (window.myReportChart) {
             window.myReportChart.destroy();
         }
@@ -617,7 +656,7 @@ function updateUI() {
                         type: 'line',
                         label: '合計額 (¥)',
                         data: amountData,
-                        borderColor: '#34d399', // emerald-400
+                        borderColor: '#34d399', 
                         backgroundColor: '#34d399',
                         borderWidth: 2,
                         yAxisID: 'y-amount',
@@ -628,7 +667,7 @@ function updateUI() {
                         type: 'bar',
                         label: '合計回数 (回)',
                         data: countData,
-                        backgroundColor: 'rgba(129, 140, 248, 0.8)', // indigo-400
+                        backgroundColor: 'rgba(129, 140, 248, 0.8)', 
                         borderColor: '#818cf8',
                         borderWidth: 1,
                         yAxisID: 'y-count',
@@ -656,7 +695,7 @@ function updateUI() {
                         position: 'right',
                         title: { display: true, text: '回数 (回)', color: textColor, font: { size: 10 } },
                         ticks: { color: textColor, stepSize: 1, font: { size: 10 } },
-                        grid: { drawOnChartArea: false } // 目盛線が重なるのを防ぐ
+                        grid: { drawOnChartArea: false } 
                     },
                     x: {
                         ticks: { color: textColor, font: { size: 10 }, maxRotation: 45 },
@@ -770,11 +809,20 @@ function updateUI() {
     
     // 5. 設定タブ
     const passwordSettings = document.getElementById('parent-password-settings');
+    const resetSettings = document.getElementById('parent-reset-settings'); // ★追加: リセット設定の表示制御
+
     if (passwordSettings) {
         if (currentRole === 'parent') {
             passwordSettings.classList.remove('hidden');
         } else {
             passwordSettings.classList.add('hidden');
+        }
+    }
+    if (resetSettings) {
+        if (currentRole === 'parent') {
+            resetSettings.classList.remove('hidden');
+        } else {
+            resetSettings.classList.add('hidden');
         }
     }
 
@@ -813,6 +861,7 @@ function promptDeleteJob(title) {
     if (!verifyParentPassword()) { alert('パスワードが間違っているか、キャンセルされました。'); return; }
     if (confirm(`本当に「${title}」を削除しますか？`)) {
         availableJobs = availableJobs.filter(job => job.title !== title);
+        saveState(); // ★保存
         showToast(`「${title}」を削除しました。`);
         updateUI();
     }
@@ -846,6 +895,7 @@ function saveEditedJob() {
     if (jobIndex !== -1) {
         availableJobs[jobIndex].title = newTitle;
         availableJobs[jobIndex].price = newPrice;
+        saveState(); // ★保存
         showToast(`「${newTitle}」に更新しました。`);
     }
     closeEditModal();
@@ -859,6 +909,7 @@ function changeTheme(color) {
     } else if (currentRole === 'parent') {
         parentTheme = color;
     }
+    saveState(); // ★保存
     applyTheme(color);
 }
 
@@ -898,6 +949,7 @@ function updateChildName() {
     const oldName = child.name;
     child.name = newName;
     
+    saveState(); // ★保存
     showToast(`名前を「${newName}」に変更しました！`);
     addNotification(child.id, newName, `【${oldName}】の名前が「${newName}」に変更されました。`);
     
@@ -918,11 +970,49 @@ function deleteChildAccount() {
             const name = child.name;
             children = children.filter(c => c.id !== currentUserId);
             
+            saveState(); // ★保存
             showToast(`「${name}」のアカウントを削除しました。`);
             addNotification('deleted', name, `アカウント「${name}」が削除されました。`);
             
             logout();
             renderLoginScreen();
         }
+    }
+}
+
+// ★追加：すべてのデータをリセットする機能（子アカウントのガワは残す）
+function resetAllData() {
+    if (!verifyParentPassword()) { 
+        alert('パスワードが間違っているか、キャンセルされました。'); 
+        return; 
+    }
+    
+    if (confirm('【警告】本当に全てのデータをリセットしますか？\n子供アカウントの名前は残りますが、残高や履歴、提案されたメニューなどのデータは全て初期化されます。')) {
+        
+        // 子アカウントのID、名前、テーマだけを残し、中身を全てリセット
+        children = children.map(child => ({
+            id: child.id,
+            name: child.name,
+            theme: child.theme, 
+            totalAmount: 0,
+            completedToday: [],
+            pendingRequests: [],
+            pendingProposals: [],
+            confirmedHistory: []
+        }));
+        
+        // その他のデータを初期状態に戻す
+        availableJobs = [...INITIAL_JOBS];
+        notifications = [];
+        parentPassword = 'fuu18';
+        parentTheme = 'default';
+        lastActiveDate = ""; 
+
+        // リセットした状態を保存
+        saveState();
+        showToast('全てのデータをリセットしました。');
+        
+        // ログアウトしてトップに戻る
+        logout();
     }
 }
