@@ -6,7 +6,6 @@
     <title>家庭内アルバイト管理アプリ - スプリント1</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    <!-- ★追加: グラフ描画のためのChart.js -->
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <link rel="stylesheet" href="style.css">
 </head>
@@ -20,7 +19,6 @@
             <h1 class="text-2xl font-bold tracking-tight mb-2">家庭内アルバイト管理</h1>
             <p class="text-slate-400 text-sm mb-8">お手伝いをデジタル化して楽しくスマートに</p>
             
-            <!-- ID重複を修正して1つにまとめました -->
             <div id="login-cards-container" class="flex flex-wrap justify-center gap-4">
             </div>
         </div>
@@ -64,7 +62,6 @@
 
             <!-- メインタブ（子アカウント） -->
             <div id="tab-child-main" class="hidden space-y-6">
-                <!-- 既存のコードそのまま -->
                 <div class="bg-gradient-to-br from-indigo-900 to-slate-900 border border-indigo-500/30 rounded-3xl p-6 shadow-xl relative overflow-hidden">
                     <div class="absolute -right-8 -bottom-8 text-indigo-500/10 text-9xl font-bold"><i class="fa-solid fa-coins"></i></div>
                     <p class="text-indigo-300 text-xs font-semibold uppercase tracking-wider mb-1">今月の合計金額</p>
@@ -112,7 +109,6 @@
 
             <!-- メインタブ（親アカウント） -->
             <div id="tab-parent-main" class="hidden space-y-6">
-                <!-- 既存のコードそのまま -->
                 <div id="parent-child-list-section">
                     <h3 class="text-sm font-semibold text-slate-400 mb-3"><i class="fa-solid fa-users text-indigo-400 mr-1.5"></i>管理する子アカウント一覧</h3>
                     <div id="parent-child-list" class="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -144,18 +140,15 @@
             <div id="tab-notifications" class="hidden">
             </div>
 
-            <!-- ★変更箇所：レポートタブ -->
+            <!-- レポートタブ -->
             <div id="tab-report" class="hidden space-y-6">
-                <!-- 親アカウント用の子切り替えUI -->
                 <div id="report-child-selector" class="flex space-x-2 overflow-x-auto pb-2 hidden">
-                    <!-- JSで動的に生成 -->
                 </div>
 
                 <div class="flex items-center justify-between">
                     <h2 id="report-title" class="text-lg font-bold">お手伝いレポート</h2>
                 </div>
 
-                <!-- 1. 成果表示部（左右に分ける） -->
                 <div class="grid grid-cols-2 gap-4">
                     <div class="bg-slate-900 border border-slate-800 rounded-2xl p-5 flex flex-col items-center justify-center text-center">
                         <p class="text-xs text-slate-400 mb-2"><i class="fa-solid fa-calendar-days mr-1"></i>今月全体の成果</p>
@@ -169,7 +162,6 @@
                     </div>
                 </div>
 
-                <!-- 2. グラフ領域（追加） -->
                 <div class="bg-slate-900 border border-slate-800 rounded-2xl p-4">
                     <h3 class="text-sm font-semibold text-slate-300 mb-3 text-center">今月の成果推移</h3>
                     <div class="relative w-full h-[250px]">
@@ -177,7 +169,6 @@
                     </div>
                 </div>
 
-                <!-- 3. 承認済みお手伝い一覧 -->
                 <div class="bg-slate-900 border border-slate-800 rounded-2xl p-5">
                     <h3 class="text-sm font-semibold text-slate-300 mb-3">承認済みお手伝い一覧</h3>
                     <div id="report-history-list" class="space-y-3 max-h-60 overflow-y-auto pr-2">
@@ -188,7 +179,6 @@
 
             <!-- 設定タブ -->
             <div id="tab-settings" class="hidden space-y-6">
-                <!-- 既存のコードそのまま -->
                 <h2 class="text-lg font-bold">アプリ設定</h2>
                 
                 <div class="bg-slate-900 border border-slate-800 rounded-2xl divide-y divide-slate-800 transition-all mb-6">
@@ -252,6 +242,18 @@
                             </button>
                         </div>
                     </div>
+
+                    <!-- ★追加：データリセット設定 -->
+                    <div id="parent-reset-settings" class="p-4 hidden border-t border-slate-800/60">
+                        <div class="mb-4">
+                            <p class="text-sm font-medium text-rose-400">データの初期化</p>
+                            <p class="text-xs text-slate-400">履歴、通知、追加したメニューなどを全てリセットします。（作成済みの子アカウントの名前だけは残ります）</p>
+                        </div>
+                        <button onclick="resetAllData()" class="w-full bg-slate-800/50 hover:bg-rose-950 border border-rose-500/20 text-rose-500 hover:text-rose-400 font-semibold py-2.5 rounded-xl text-sm transition duration-150">
+                            全てのデータをリセットする
+                        </button>
+                    </div>
+
                 </div>
             </div>
         </main>
@@ -259,7 +261,6 @@
 
     <!-- モーダルとトースト -->
     <div id="edit-job-modal" class="hidden fixed inset-0 bg-black/60 z-[100] flex items-center justify-center p-4">
-        <!-- 中身は既存のまま -->
         <div class="bg-slate-900 border border-slate-800 rounded-3xl p-6 w-full max-w-sm shadow-2xl">
             <h3 class="text-lg font-bold text-slate-200 mb-4"><i class="fa-solid fa-pen mr-2 text-indigo-400"></i>お手伝いの編集</h3>
             <div class="space-y-4">
