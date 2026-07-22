@@ -280,6 +280,23 @@
         </div>
     </div>
 
+    <div id="duplicate-alert-modal" class="hidden fixed inset-0 bg-black/60 z-[100] flex items-center justify-center p-4">
+        <div class="bg-slate-900 border border-slate-800 rounded-3xl p-6 w-full max-w-sm shadow-2xl">
+            <h3 class="text-lg font-bold text-amber-400 mb-3 flex items-center">
+                <i class="fa-solid fa-triangle-exclamation mr-2"></i>重複申請の確認
+            </h3>
+            <p class="text-sm text-slate-200 mb-6 leading-relaxed">
+                本日、他の子アカウントからも同じアルバイトの申請が来ているか、すでに承認されています。<br>被っているけど大丈夫ですか？
+            </p>
+            <div class="flex space-x-2">
+                <!-- 左から「拒否」「保留」「承認」の順にボタンを配置 -->
+                <button onclick="handleDuplicateChoice('reject')" class="flex-1 bg-rose-600 hover:bg-rose-500 text-white font-medium py-2.5 rounded-xl text-sm transition shadow-lg shadow-rose-600/20">拒否</button>
+                <button onclick="handleDuplicateChoice('pending')" class="flex-1 bg-slate-700 hover:bg-slate-600 text-white font-medium py-2.5 rounded-xl text-sm transition">保留</button>
+                <button onclick="handleDuplicateChoice('approve')" class="flex-1 bg-indigo-600 hover:bg-indigo-500 text-white font-medium py-2.5 rounded-xl text-sm transition shadow-lg shadow-indigo-600/20">承認</button>
+            </div>
+        </div>
+    </div>
+
     <div id="toast" class="fixed bottom-5 right-5 bg-indigo-600 text-white text-sm font-medium py-3 px-5 rounded-xl shadow-xl transition-all duration-300 transform translate-y-20 opacity-0 z-50 flex items-center space-x-2">
         <i class="fa-solid fa-circle-info"></i>
         <span id="toast-message">通知メッセージ</span>
