@@ -333,6 +333,67 @@ function submitProposal() {
 }
 
 // --- 親のアクション ---
+
+// --- 重複申請アラート用の状態管理 ---
+let pendingDuplicateCheck = null;
+
+// 重複チェックを行い、問題なければ承認、重複があればアラートを出す関数
+function checkDuplicateAndHandleRequest(childId, reqId) {
+    const child = children.find(c => c.id === childId);
+    if (!child) return;
+
+    const req = child.pendingRequests.find(r => r.id === reqId);
+    if (!req) return;
+
+    const jobTitle = req.title;
+    const todayStr = new Date().toLocaleDateString('ja-JP');
+    let isDuplicated = false;
+
+    // 他の子アカウントをループして同じジョブがないか確認
+    for (const otherChild of children) {
+        if (otherChild.id === childId) continue; // 自分自身はスキップ
+
+        // 条件1: 他の子が同じジョブを現在「申請中」かどうか
+        const hasPending = otherChild.pendingRequests.some(r => r.title === jobTitle);
+        
+        // 条件2: 他の子が今日すでに同じジョブを「承認済み」かどうか
+        const hasConfirmedToday = otherChild.confirmedHistory.some(h => h.title === jobTitle && h.date === todayStr);
+
+        if (hasPending || hasConfirmedToday) {
+            isDuplicated = true;
+            break;
+        }
+    }
+
+    if (isDuplicated) {
+        // 重複している場合は情報を保持してモーダルを表示
+        pendingDuplicateCheck = { childId, reqId };
+        document.getElementById('duplicate-alert-modal').classList.remove('hidden');
+    } else {
+        // 重複していなければ通常通りそのまま承認処理へ
+        handleRequest(childId, reqId, true);
+    }
+}
+
+// モーダルで3つのボタンのいずれかが押された時の処理
+function handleDuplicateChoice(choice) {
+    if (!pendingDuplicateCheck) return;
+    const { childId, reqId } = pendingDuplicateCheck;
+
+    if (choice === 'approve') {
+        // 承認：そのまま承認する
+        handleRequest(childId, reqId, true);
+    } else if (choice === 'reject') {
+        // 拒否：申請を却下する
+        handleRequest(childId, reqId, false);
+    }
+    // choice === 'pending' (保留) の場合は何もしない
+
+    // モーダルを閉じて状態をリセット
+    document.getElementById('duplicate-alert-modal').classList.add('hidden');
+    pendingDuplicateCheck = null;
+}
+
 function handleRequest(childId, id, isApproved) {
     const child = children.find(c => c.id === childId);
     if (!child) return;
@@ -502,8 +563,8 @@ function updateUI() {
                                 </div>
                             </div>
                             <div class="flex items-center space-x-2">
-                                <button onclick="handleRequest('${child.id}', ${req.id}, false)" class="bg-slate-800 hover:bg-rose-500/20 text-rose-400 text-xs font-semibold px-3 py-2 rounded-lg transition">却下</button>
-                                <button onclick="handleRequest('${child.id}', ${req.id}, true)" class="bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-semibold px-3 py-2 rounded-lg transition">承認</button>
+                            <button onclick="handleRequest('${child.id}', ${req.id}, false)" class="bg-slate-800 hover:bg-rose-500/20 text-rose-400 text-xs font-semibold px-3 py-2 rounded-lg transition">却下</button>
+                            <button onclick="checkDuplicateAndHandleRequest('${child.id}', ${req.id})" class="bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-semibold px-3 py-2 rounded-lg transition">承認</button>    
                             </div>
                         </div>
                     `).join('');
