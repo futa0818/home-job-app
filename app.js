@@ -40,6 +40,17 @@ function loadState() {
         lastActiveDate = state.lastActiveDate || "";
         parentPassword = state.parentPassword || 'fuu18';
         parentTheme = state.parentTheme || 'default';
+        
+        // マイグレーション: 古い履歴データにidが付いていない場合は付与する
+        children.forEach(child => {
+            if (child.confirmedHistory) {
+                child.confirmedHistory.forEach((h, index) => {
+                    if (!h.id) {
+                        h.id = Date.now() + index + Math.random(); 
+                    }
+                });
+            }
+        });
     } else {
         // 初回アクセス時の初期データ
         children = [
@@ -123,7 +134,7 @@ function promptAddChild() {
             pendingProposals: [],
             confirmedHistory: []
         });
-        saveState(); // ★保存
+        saveState(); 
         showToast(`${name.trim()}のアカウントを追加しました！`);
         renderLoginScreen();
     }
@@ -155,11 +166,11 @@ function updateClock() {
     const currentDateStr = `${year}/${month}/${date}`;
     if (!lastActiveDate) {
         lastActiveDate = currentDateStr; 
-        saveState(); // ★保存
+        saveState(); 
     } else if (lastActiveDate !== currentDateStr) {
         lastActiveDate = currentDateStr; 
         children.forEach(c => c.completedToday = []); 
-        saveState(); // ★保存
+        saveState(); 
         if (currentRole) updateUI();
     }
 }
@@ -180,7 +191,7 @@ function addNotification(childId, childName, message) {
         message: message, 
         timestamp: timestamp 
     });
-    saveState(); // ★保存
+    saveState(); 
 }
 
 // --- ログイン・画面切り替え処理 ---
@@ -296,7 +307,7 @@ function updateParentPassword() {
     if (newInput.value !== confirmInput.value) { showToast('新しいパスワードと確認用パスワードが一致しません。'); return; }
 
     parentPassword = newInput.value;
-    saveState(); // ★保存
+    saveState(); 
     showToast('パスワードを正常に変更しました！');
     currentInput.value = ''; newInput.value = ''; confirmInput.value = '';
 }
@@ -309,7 +320,7 @@ function requestJob(title, price, icon) {
     child.pendingRequests.unshift({ id: Date.now(), title: title, price: price, icon: icon, time: 'たった今' });
     child.completedToday.push(title);
     
-    saveState(); // ★保存
+    saveState(); 
     showToast(`「${title}」の実行を親に申請しました！`);
     updateUI();
 }
@@ -325,7 +336,7 @@ function submitProposal() {
 
     child.pendingProposals.unshift({ id: Date.now(), title: titleInput.value, price: parseInt(priceInput.value), time: 'たった今' });
     
-    saveState(); // ★保存
+    saveState(); 
     showToast(`新メニュー「${titleInput.value}」を提案しました！`);
     
     titleInput.value = ''; priceInput.value = '';
@@ -334,10 +345,8 @@ function submitProposal() {
 
 // --- 親のアクション ---
 
-// --- 重複申請アラート用の状態管理 ---
 let pendingDuplicateCheck = null;
 
-// 重複チェックを行い、問題なければ承認、重複があればアラートを出す関数
 function checkDuplicateAndHandleRequest(childId, reqId) {
     const child = children.find(c => c.id === childId);
     if (!child) return;
@@ -349,14 +358,10 @@ function checkDuplicateAndHandleRequest(childId, reqId) {
     const todayStr = new Date().toLocaleDateString('ja-JP');
     let isDuplicated = false;
 
-    // 他の子アカウントをループして同じジョブがないか確認
     for (const otherChild of children) {
-        if (otherChild.id === childId) continue; // 自分自身はスキップ
+        if (otherChild.id === childId) continue; 
 
-        // 条件1: 他の子が同じジョブを現在「申請中」かどうか
         const hasPending = otherChild.pendingRequests.some(r => r.title === jobTitle);
-        
-        // 条件2: 他の子が今日すでに同じジョブを「承認済み」かどうか
         const hasConfirmedToday = otherChild.confirmedHistory.some(h => h.title === jobTitle && h.date === todayStr);
 
         if (hasPending || hasConfirmedToday) {
@@ -366,30 +371,23 @@ function checkDuplicateAndHandleRequest(childId, reqId) {
     }
 
     if (isDuplicated) {
-        // 重複している場合は情報を保持してモーダルを表示
         pendingDuplicateCheck = { childId, reqId };
         document.getElementById('duplicate-alert-modal').classList.remove('hidden');
     } else {
-        // 重複していなければ通常通りそのまま承認処理へ
         handleRequest(childId, reqId, true);
     }
 }
 
-// モーダルで3つのボタンのいずれかが押された時の処理
 function handleDuplicateChoice(choice) {
     if (!pendingDuplicateCheck) return;
     const { childId, reqId } = pendingDuplicateCheck;
 
     if (choice === 'approve') {
-        // 承認：そのまま承認する
         handleRequest(childId, reqId, true);
     } else if (choice === 'reject') {
-        // 拒否：申請を却下する
         handleRequest(childId, reqId, false);
     }
-    // choice === 'pending' (保留) の場合は何もしない
 
-    // モーダルを閉じて状態をリセット
     document.getElementById('duplicate-alert-modal').classList.add('hidden');
     pendingDuplicateCheck = null;
 }
@@ -405,7 +403,8 @@ function handleRequest(childId, id, isApproved) {
         
         if (isApproved) {
             child.totalAmount += req.price;
-            child.confirmedHistory.unshift({ title: req.title, price: req.price, date: new Date().toLocaleDateString('ja-JP') });
+            // ★ id を付与して保存するように変更
+            child.confirmedHistory.unshift({ id: Date.now(), title: req.title, price: req.price, date: new Date().toLocaleDateString('ja-JP') });
             showToast(`「${req.title}」を承認しました！`);
             addNotification(child.id, child.name, `【${child.name}】お手伝い申請「${req.title}」が許可されました。`);
         } else {
@@ -413,7 +412,7 @@ function handleRequest(childId, id, isApproved) {
             child.completedToday = child.completedToday.filter(title => title !== req.title);
             addNotification(child.id, child.name, `【${child.name}】お手伝い申請「${req.title}」が拒否されました。`);
         }
-        saveState(); // ★保存
+        saveState(); 
         updateUI();
     }
 }
@@ -435,9 +434,53 @@ function handleProposal(childId, id, isApproved) {
             showToast(`提案「${prop.title}」を見送りました。`);
             addNotification(child.id, child.name, `【${child.name}】新メニュー「${prop.title}」の追加が見送られました。`);
         }
-        saveState(); // ★保存
+        saveState(); 
         updateUI();
     }
+}
+
+// ★ 承認解除（取り消し）機能
+function cancelConfirmedJob(childId, historyId) {
+    // 子供アカウントから実行された場合は、親のパスワードを確認する
+    if (currentRole !== 'parent') {
+        if (!verifyParentPassword()) {
+            alert('親権限が必要です。パスワードが間違っているか、キャンセルされました。');
+            return;
+        }
+    } else {
+        if (!confirm('この承認を解除（取り消し）しますか？')) {
+            return;
+        }
+    }
+
+    const child = children.find(c => c.id === childId);
+    if (!child) return;
+
+    const historyIndex = child.confirmedHistory.findIndex(h => String(h.id) === String(historyId));
+    if (historyIndex === -1) return;
+
+    const historyItem = child.confirmedHistory[historyIndex];
+
+    // 履歴から削除
+    child.confirmedHistory.splice(historyIndex, 1);
+    
+    // 総額から減算（0未満にならないよう調整）
+    child.totalAmount = Math.max(0, child.totalAmount - historyItem.price);
+
+    // 今日承認したアルバイトを取り消した場合、再申請できるようにcompletedTodayから削除
+    const todayStr = new Date().toLocaleDateString('ja-JP');
+    if (historyItem.date === todayStr) {
+        const index = child.completedToday.indexOf(historyItem.title);
+        if (index > -1) {
+            child.completedToday.splice(index, 1);
+        }
+    }
+
+    addNotification(child.id, child.name, `【システム】お手伝い「${historyItem.title}」の承認が取り消されました。`);
+    
+    saveState(); 
+    showToast(`「${historyItem.title}」の承認を解除しました。`);
+    updateUI();
 }
 
 function viewChildDetail(childId) {
@@ -470,7 +513,12 @@ function updateUI() {
             childHistoryList.innerHTML = child.confirmedHistory.map(item => `
                 <div class="flex items-center justify-between bg-slate-950/50 p-2.5 rounded-xl border border-slate-800">
                     <span class="text-xs text-slate-300">${item.title}</span>
-                    <span class="text-xs font-bold text-emerald-400">+¥${item.price}</span>
+                    <div class="flex items-center space-x-3">
+                        <span class="text-xs font-bold text-emerald-400">+¥${item.price}</span>
+                        <button onclick="cancelConfirmedJob('${child.id}', '${item.id}')" class="text-slate-500 hover:text-rose-400 transition" title="承認を解除">
+                            <i class="fa-solid fa-xmark text-sm"></i>
+                        </button>
+                    </div>
                 </div>
             `).join('');
         }
@@ -631,9 +679,10 @@ function updateUI() {
             }
         }
 
+        // ★履歴IDを含めてまとめる
         let allHistory = [];
         targetChildren.forEach(c => {
-            c.confirmedHistory.forEach(h => allHistory.push({...h, childName: c.name}));
+            c.confirmedHistory.forEach(h => allHistory.push({...h, childName: c.name, childId: c.id, historyId: h.id}));
         });
 
         // 成果の集計処理（今月と今日）
@@ -771,7 +820,7 @@ function updateUI() {
             }
         });
 
-        // --- 承認済みお手伝い一覧の描画 ---
+        // --- 承認済みお手伝い一覧の描画（取消ボタン付き） ---
         const reportHistoryList = document.getElementById('report-history-list');
         if (allHistory.length === 0) {
             reportHistoryList.innerHTML = `<p class="text-xs text-slate-500 text-center py-4">承認されたデータがここに表示されます</p>`;
@@ -782,7 +831,12 @@ function updateUI() {
                         <p class="text-sm font-medium text-slate-200">${item.title} ${targetChildren.length > 1 ? `<span class="text-xs text-indigo-400 ml-1">(${item.childName})</span>` : ''}</p>
                         <p class="text-[10px] text-slate-500">${item.date}</p>
                     </div>
-                    <span class="text-sm font-bold text-emerald-400">¥${item.price}</span>
+                    <div class="flex items-center space-x-3">
+                        <span class="text-sm font-bold text-emerald-400">¥${item.price}</span>
+                        <button onclick="cancelConfirmedJob('${item.childId}', '${item.historyId}')" class="text-slate-400 hover:text-rose-400 transition bg-slate-800/50 hover:bg-slate-800 w-7 h-7 flex items-center justify-center rounded-lg" title="承認を解除">
+                            <i class="fa-solid fa-xmark"></i>
+                        </button>
+                    </div>
                 </div>
             `).join('');
         }
@@ -870,7 +924,7 @@ function updateUI() {
     
     // 5. 設定タブ
     const passwordSettings = document.getElementById('parent-password-settings');
-    const resetSettings = document.getElementById('parent-reset-settings'); // ★追加: リセット設定の表示制御
+    const resetSettings = document.getElementById('parent-reset-settings');
 
     if (passwordSettings) {
         if (currentRole === 'parent') {
@@ -922,7 +976,7 @@ function promptDeleteJob(title) {
     if (!verifyParentPassword()) { alert('パスワードが間違っているか、キャンセルされました。'); return; }
     if (confirm(`本当に「${title}」を削除しますか？`)) {
         availableJobs = availableJobs.filter(job => job.title !== title);
-        saveState(); // ★保存
+        saveState(); 
         showToast(`「${title}」を削除しました。`);
         updateUI();
     }
@@ -956,7 +1010,7 @@ function saveEditedJob() {
     if (jobIndex !== -1) {
         availableJobs[jobIndex].title = newTitle;
         availableJobs[jobIndex].price = newPrice;
-        saveState(); // ★保存
+        saveState(); 
         showToast(`「${newTitle}」に更新しました。`);
     }
     closeEditModal();
@@ -970,7 +1024,7 @@ function changeTheme(color) {
     } else if (currentRole === 'parent') {
         parentTheme = color;
     }
-    saveState(); // ★保存
+    saveState(); 
     applyTheme(color);
 }
 
@@ -1010,7 +1064,7 @@ function updateChildName() {
     const oldName = child.name;
     child.name = newName;
     
-    saveState(); // ★保存
+    saveState(); 
     showToast(`名前を「${newName}」に変更しました！`);
     addNotification(child.id, newName, `【${oldName}】の名前が「${newName}」に変更されました。`);
     
@@ -1031,7 +1085,7 @@ function deleteChildAccount() {
             const name = child.name;
             children = children.filter(c => c.id !== currentUserId);
             
-            saveState(); // ★保存
+            saveState(); 
             showToast(`「${name}」のアカウントを削除しました。`);
             addNotification('deleted', name, `アカウント「${name}」が削除されました。`);
             
@@ -1041,7 +1095,6 @@ function deleteChildAccount() {
     }
 }
 
-// ★追加：すべてのデータをリセットする機能（子アカウントのガワは残す）
 function resetAllData() {
     if (!verifyParentPassword()) { 
         alert('パスワードが間違っているか、キャンセルされました。'); 
@@ -1050,7 +1103,6 @@ function resetAllData() {
     
     if (confirm('【警告】本当に全てのデータをリセットしますか？\n子供アカウントの名前は残りますが、残高や履歴、提案されたメニューなどのデータは全て初期化されます。')) {
         
-        // 子アカウントのID、名前、テーマだけを残し、中身を全てリセット
         children = children.map(child => ({
             id: child.id,
             name: child.name,
@@ -1062,18 +1114,15 @@ function resetAllData() {
             confirmedHistory: []
         }));
         
-        // その他のデータを初期状態に戻す
         availableJobs = [...INITIAL_JOBS];
         notifications = [];
         parentPassword = 'fuu18';
         parentTheme = 'default';
         lastActiveDate = ""; 
 
-        // リセットした状態を保存
         saveState();
         showToast('全てのデータをリセットしました。');
         
-        // ログアウトしてトップに戻る
         logout();
     }
 }
