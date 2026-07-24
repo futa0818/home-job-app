@@ -29,6 +29,10 @@ let lastActiveDate = "";
 let notifications = []; 
 let availableJobs = [];
 
+// ★ここに追加：レポートで表示している年と月
+let reportSelectedYear = new Date().getFullYear();
+let reportSelectedMonth = new Date().getMonth() + 1;
+
 // --- ローカルストレージ機能 ---
 function loadState() {
     const saved = localStorage.getItem('familyApp_state');
@@ -277,6 +281,20 @@ function switchTab(tabName) {
 function changeReportTarget(target) {
     reportSelectedTarget = target;
     updateUI();
+}
+
+// ★ここに追加：レポートの表示月を切り替える関数
+function changeReportMonth(offset) {
+    reportSelectedMonth += offset;
+    // 年またぎの処理（1月より前になったら前年の12月に、12月より後になったら翌年の1月に）
+    if (reportSelectedMonth < 1) {
+        reportSelectedMonth = 12;
+        reportSelectedYear--;
+    } else if (reportSelectedMonth > 12) {
+        reportSelectedMonth = 1;
+        reportSelectedYear++;
+    }
+    updateUI(); // UIを再描画して変更を反映
 }
 
 function goHome() { switchTab('main'); }
@@ -679,27 +697,39 @@ function updateUI() {
             }
         }
 
-        // ★履歴IDを含めてまとめる
+        // ★履歴IDを含めてまとめる（ここは既存のまま）
         let allHistory = [];
         targetChildren.forEach(c => {
             c.confirmedHistory.forEach(h => allHistory.push({...h, childName: c.name, childId: c.id, historyId: h.id}));
         });
 
-        // 成果の集計処理（今月と今日）
+        // ----------------------------------------------------
+        // ▼▼ ここから下を最後まで（ // 4. 通知タブ の直前まで）差し替え ▼▼
+        // ----------------------------------------------------
+
+        // ★追加：UIの年月表示とラベルテキストを更新
+        const monthDisplay = document.getElementById('report-month-display');
+        if (monthDisplay) monthDisplay.innerText = `${reportSelectedYear}年 ${reportSelectedMonth}月`;
+        
+        const monthLabel = document.getElementById('report-month-label');
+        if (monthLabel) monthLabel.innerText = `${reportSelectedMonth}月の成果`;
+
+        // 成果の集計処理
         const now = new Date();
         const currentYear = now.getFullYear();
         const currentMonth = now.getMonth() + 1;
         const currentDay = now.getDate();
         
-        const currentMonthPrefix = `${currentYear}/${currentMonth}`;
+        // ★変更：現在日時ではなく、選択された年・月を基準にする
+        const selectedMonthPrefix = `${reportSelectedYear}/${reportSelectedMonth}`;
 
         let monthTotalAmount = 0;
         let monthTotalCount = 0;
         let todayTotalAmount = 0;
         let todayTotalCount = 0;
 
-        // グラフ用の日別データ
         const dailyData = {}; 
+        let selectedMonthHistory = []; // ★変更：選択月の履歴だけを保存する配列
 
         allHistory.forEach(item => {
             const dateParts = item.date.split('/');
@@ -709,9 +739,10 @@ function updateUI() {
                 const itemDay = parseInt(dateParts[2], 10);
                 const itemMonthPrefix = `${itemYear}/${itemMonth}`;
 
-                if (itemMonthPrefix === currentMonthPrefix) {
+                if (itemMonthPrefix === selectedMonthPrefix) {
                     monthTotalAmount += item.price;
                     monthTotalCount++;
+                    selectedMonthHistory.push(item); // 選択月ならリストに追加
 
                     if (!dailyData[itemDay]) {
                         dailyData[itemDay] = { amount: 0, count: 0 };
@@ -719,6 +750,7 @@ function updateUI() {
                     dailyData[itemDay].amount += item.price;
                     dailyData[itemDay].count++;
                 }
+                // 「今日の成果」は選択月に関わらず、リアルな今日のデータを集計する
                 if (itemYear === currentYear && itemMonth === currentMonth && itemDay === currentDay) {
                     todayTotalAmount += item.price;
                     todayTotalCount++;
@@ -733,7 +765,8 @@ function updateUI() {
         document.getElementById('report-today-count').innerText = `${todayTotalCount}回`;
 
         // --- グラフデータの作成と描画 ---
-        const lastDay = new Date(currentYear, currentMonth, 0).getDate();
+        // ★変更：選択された月の日数（28〜31）を取得してX軸を構築
+        const lastDay = new Date(reportSelectedYear, reportSelectedMonth, 0).getDate();
         const labels = [];
         const amountData = [];
         const countData = [];
@@ -822,10 +855,11 @@ function updateUI() {
 
         // --- 承認済みお手伝い一覧の描画（取消ボタン付き） ---
         const reportHistoryList = document.getElementById('report-history-list');
-        if (allHistory.length === 0) {
+        // ★変更：全履歴（allHistory）ではなく、選択した月（selectedMonthHistory）の履歴のみを描画
+        if (selectedMonthHistory.length === 0) {
             reportHistoryList.innerHTML = `<p class="text-xs text-slate-500 text-center py-4">承認されたデータがここに表示されます</p>`;
         } else {
-            reportHistoryList.innerHTML = allHistory.map(item => `
+            reportHistoryList.innerHTML = selectedMonthHistory.map(item => `
                 <div class="flex items-center justify-between border-b border-slate-800/60 pb-2 last:border-0 last:pb-0 mt-2">
                     <div>
                         <p class="text-sm font-medium text-slate-200">${item.title} ${targetChildren.length > 1 ? `<span class="text-xs text-indigo-400 ml-1">(${item.childName})</span>` : ''}</p>
@@ -840,8 +874,11 @@ function updateUI() {
                 </div>
             `).join('');
         }
-    }
+        // ▲▲ 差し替えここまで ▲▲
 
+    } // ここは if (currentTab === 'report') の閉じカッコ
+
+    // 4. 通知タブ
     // 4. 通知タブ
     if (currentTab === 'notifications') {
         const tabContainer = document.getElementById('tab-notifications');
