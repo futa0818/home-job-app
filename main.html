@@ -141,6 +141,7 @@
             </div>
 
             <!-- レポートタブ -->
+            <!-- レポートタブ -->
             <div id="tab-report" class="hidden space-y-6">
                 <div id="report-child-selector" class="flex space-x-2 overflow-x-auto pb-2 hidden">
                 </div>
@@ -149,9 +150,21 @@
                     <h2 id="report-title" class="text-lg font-bold">お手伝いレポート</h2>
                 </div>
 
+                <!-- ★追加：月を切り替えるUI -->
+                <div class="flex items-center justify-between bg-slate-900 border border-slate-800 rounded-2xl p-2">
+                    <button onclick="changeReportMonth(-1)" class="w-10 h-10 flex items-center justify-center rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-400 transition">
+                        <i class="fa-solid fa-chevron-left"></i>
+                    </button>
+                    <span id="report-month-display" class="text-base font-bold text-slate-200">2024年 1月</span>
+                    <button onclick="changeReportMonth(1)" class="w-10 h-10 flex items-center justify-center rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-400 transition">
+                        <i class="fa-solid fa-chevron-right"></i>
+                    </button>
+                </div>
+
                 <div class="grid grid-cols-2 gap-4">
                     <div class="bg-slate-900 border border-slate-800 rounded-2xl p-5 flex flex-col items-center justify-center text-center">
-                        <p class="text-xs text-slate-400 mb-2"><i class="fa-solid fa-calendar-days mr-1"></i>今月全体の成果</p>
+                        <!-- ★変更：「今月」という固定文字を撤廃しidを付与 -->
+                        <p class="text-xs text-slate-400 mb-2"><i class="fa-solid fa-calendar-days mr-1"></i><span id="report-month-label">選択月の成果</span></p>
                         <p class="text-2xl sm:text-3xl font-bold text-emerald-400 mb-1" id="report-month-total">¥0</p>
                         <p class="text-sm text-indigo-400 font-medium" id="report-month-count">0回</p>
                     </div>
@@ -163,7 +176,8 @@
                 </div>
 
                 <div class="bg-slate-900 border border-slate-800 rounded-2xl p-4">
-                    <h3 class="text-sm font-semibold text-slate-300 mb-3 text-center">今月の成果推移</h3>
+                    <!-- ★変更：タイトルを変更 -->
+                    <h3 class="text-sm font-semibold text-slate-300 mb-3 text-center">月間グラフ</h3>
                     <div class="relative w-full h-[250px]">
                         <canvas id="monthlyChart"></canvas>
                     </div>
