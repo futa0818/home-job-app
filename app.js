@@ -32,6 +32,7 @@ let availableJobs = [];
 // ★ここに追加：レポートで表示している年と月
 let reportSelectedYear = new Date().getFullYear();
 let reportSelectedMonth = new Date().getMonth() + 1;
+let selectedReportDate = null; // ★追加：カレンダーで選択された日付を保持する変数
 
 // --- ローカルストレージ機能 ---
 function loadState() {
@@ -283,7 +284,6 @@ function changeReportTarget(target) {
     updateUI();
 }
 
-// ★ここに追加：レポートの表示月を切り替える関数
 function changeReportMonth(offset) {
     reportSelectedMonth += offset;
     // 年またぎの処理（1月より前になったら前年の12月に、12月より後になったら翌年の1月に）
@@ -294,7 +294,18 @@ function changeReportMonth(offset) {
         reportSelectedMonth = 1;
         reportSelectedYear++;
     }
+    selectedReportDate = null; // ★追加：月を切り替えたら選択日付をリセットする
     updateUI(); // UIを再描画して変更を反映
+}
+
+// ★追加：カレンダーの日付をクリックした時の処理（changeReportMonth関数の下に追加）
+function selectReportDate(day) {
+    if (selectedReportDate === day) {
+        selectedReportDate = null; // 同じ日をもう一度押したら閉じる
+    } else {
+        selectedReportDate = day;
+    }
+    updateUI();
 }
 
 function goHome() { switchTab('main'); }
@@ -854,27 +865,96 @@ function updateUI() {
         });
 
         // --- 承認済みお手伝い一覧の描画（取消ボタン付き） ---
-        const reportHistoryList = document.getElementById('report-history-list');
-        // ★変更：全履歴（allHistory）ではなく、選択した月（selectedMonthHistory）の履歴のみを描画
-        if (selectedMonthHistory.length === 0) {
-            reportHistoryList.innerHTML = `<p class="text-xs text-slate-500 text-center py-4">承認されたデータがここに表示されます</p>`;
-        } else {
-            reportHistoryList.innerHTML = selectedMonthHistory.map(item => `
-                <div class="flex items-center justify-between border-b border-slate-800/60 pb-2 last:border-0 last:pb-0 mt-2">
-                    <div>
-                        <p class="text-sm font-medium text-slate-200">${item.title} ${targetChildren.length > 1 ? `<span class="text-xs text-indigo-400 ml-1">(${item.childName})</span>` : ''}</p>
-                        <p class="text-[10px] text-slate-500">${item.date}</p>
+        const calendarContainer = document.getElementById('report-calendar');
+        const dailyDetailContainer = document.getElementById('report-daily-detail');
+        
+        if (calendarContainer) {
+            // 月の初日の曜日 (0:日, 1:月...) と 月の日数を取得
+            const firstDayOfMonth = new Date(reportSelectedYear, reportSelectedMonth - 1, 1).getDay(); 
+            const daysInMonth = new Date(reportSelectedYear, reportSelectedMonth, 0).getDate(); 
+            
+            const dayNames = ['日', '月', '火', '水', '木', '金', '土'];
+            let calendarHtml = `<div class="grid grid-cols-7 gap-1 text-center mb-1">`;
+            dayNames.forEach((d, idx) => {
+                const colorClass = idx === 0 ? 'text-rose-400' : idx === 6 ? 'text-blue-400' : 'text-slate-400';
+                calendarHtml += `<div class="text-[10px] font-bold ${colorClass} py-1">${d}</div>`;
+            });
+            calendarHtml += `</div><div class="grid grid-cols-7 gap-1">`;
+            
+            // 月初めの空白のセル
+            for (let i = 0; i < firstDayOfMonth; i++) {
+                calendarHtml += `<div></div>`;
+            }
+            
+            // 日付セル
+            for (let i = 1; i <= daysInMonth; i++) {
+                // その日の履歴があるかチェック
+                const dayHistory = selectedMonthHistory.filter(item => {
+                    const parts = item.date.split('/');
+                    return parseInt(parts[2], 10) === i;
+                });
+                const hasData = dayHistory.length > 0;
+                const isSelected = selectedReportDate === i;
+                
+                let btnClass = "w-full aspect-square flex flex-col items-center justify-center rounded-lg text-sm transition ";
+                if (isSelected) {
+                    btnClass += "bg-indigo-600 text-white font-bold shadow-md shadow-indigo-600/30";
+                } else if (hasData) {
+                    btnClass += "bg-indigo-500/20 text-indigo-300 hover:bg-indigo-500/40 font-medium border border-indigo-500/30";
+                } else {
+                    btnClass += "text-slate-400 hover:bg-slate-800";
+                }
+                
+                calendarHtml += `
+                    <button onclick="selectReportDate(${i})" class="${btnClass}">
+                        <span>${i}</span>
+                        ${hasData ? `<span class="w-1 h-1 rounded-full bg-emerald-400 mt-0.5"></span>` : '<span class="w-1 h-1 mt-0.5"></span>'}
+                    </button>
+                `;
+            }
+            calendarHtml += `</div>`;
+            calendarContainer.innerHTML = calendarHtml;
+        }
+        
+        // 選択された日付の詳細リスト表示
+        if (selectedReportDate && dailyDetailContainer) {
+            const dayHistory = selectedMonthHistory.filter(item => {
+                const parts = item.date.split('/');
+                return parseInt(parts[2], 10) === selectedReportDate;
+            });
+            
+            dailyDetailContainer.classList.remove('hidden');
+            let detailHtml = `<div class="flex items-center justify-between mb-3">
+                                <h4 class="text-sm font-bold text-indigo-400"><i class="fa-solid fa-calendar-day mr-1.5"></i>${reportSelectedMonth}月${selectedReportDate}日のアルバイト</h4>
+                                <span class="text-xs text-slate-500 bg-slate-800 px-2 py-0.5 rounded-full">${dayHistory.length}件</span>
+                              </div>`;
+            
+            if (dayHistory.length === 0) {
+                detailHtml += `<p class="text-xs text-slate-500 text-center py-4 bg-slate-900/50 rounded-xl">この日の承認データはありません</p>`;
+            } else {
+                detailHtml += `<div class="space-y-2 max-h-48 overflow-y-auto pr-2">`;
+                detailHtml += dayHistory.map(item => `
+                    <div class="flex items-center justify-between bg-slate-950/50 p-2.5 rounded-xl border border-slate-800">
+                        <div>
+                            <p class="text-sm font-medium text-slate-200">${item.title} ${targetChildren.length > 1 ? `<span class="text-[10px] text-indigo-400 ml-1 border border-indigo-500/30 px-1 rounded-md bg-indigo-500/10">${item.childName}</span>` : ''}</p>
+                            <p class="text-[10px] text-slate-500 mt-0.5">${item.date}</p>
+                        </div>
+                        <div class="flex items-center space-x-3">
+                            <span class="text-sm font-bold text-emerald-400">+¥${item.price}</span>
+                            <button onclick="cancelConfirmedJob('${item.childId}', '${item.historyId}')" class="text-slate-400 hover:text-rose-400 transition bg-slate-800 hover:bg-rose-500/20 w-7 h-7 flex items-center justify-center rounded-lg" title="承認を解除">
+                                <i class="fa-solid fa-xmark"></i>
+                            </button>
+                        </div>
                     </div>
-                    <div class="flex items-center space-x-3">
-                        <span class="text-sm font-bold text-emerald-400">¥${item.price}</span>
-                        <button onclick="cancelConfirmedJob('${item.childId}', '${item.historyId}')" class="text-slate-400 hover:text-rose-400 transition bg-slate-800/50 hover:bg-slate-800 w-7 h-7 flex items-center justify-center rounded-lg" title="承認を解除">
-                            <i class="fa-solid fa-xmark"></i>
-                        </button>
-                    </div>
-                </div>
-            `).join('');
+                `).join('');
+                detailHtml += `</div>`;
+            }
+            dailyDetailContainer.innerHTML = detailHtml;
+        } else if (dailyDetailContainer) {
+            dailyDetailContainer.classList.add('hidden');
         }
         // ▲▲ 差し替えここまで ▲▲
+        
 
     } // ここは if (currentTab === 'report') の閉じカッコ
 
