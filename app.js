@@ -865,6 +865,7 @@ function updateUI() {
         });
 
         // --- 承認済みお手伝い一覧の描画（取消ボタン付き） ---
+        // --- 承認済みお手伝い一覧の描画（取消ボタン付き） ---
         const calendarContainer = document.getElementById('report-calendar');
         const dailyDetailContainer = document.getElementById('report-daily-detail');
         
@@ -874,7 +875,11 @@ function updateUI() {
             const daysInMonth = new Date(reportSelectedYear, reportSelectedMonth, 0).getDate(); 
             
             const dayNames = ['日', '月', '火', '水', '木', '金', '土'];
-            let calendarHtml = `<div class="grid grid-cols-7 gap-1 text-center mb-1">`;
+            
+            // ★変更箇所1: 横幅の制限を外し、横いっぱいに広がるように `w-full` に変更
+            let calendarHtml = `<div class="w-full">`;
+            
+            calendarHtml += `<div class="grid grid-cols-7 gap-1 text-center mb-1">`;
             dayNames.forEach((d, idx) => {
                 const colorClass = idx === 0 ? 'text-rose-400' : idx === 6 ? 'text-blue-400' : 'text-slate-400';
                 calendarHtml += `<div class="text-[10px] font-bold ${colorClass} py-1">${d}</div>`;
@@ -896,7 +901,10 @@ function updateUI() {
                 const hasData = dayHistory.length > 0;
                 const isSelected = selectedReportDate === i;
                 
-                let btnClass = "w-full aspect-square flex flex-col items-center justify-center rounded-lg text-sm transition ";
+                // ★変更箇所2: `aspect-square`（正方形）を削除し、`py-1.5`（上下の余白を少しだけ取る）に変更。
+                // これにより、一つ一つの日付ボタンが「横長の長方形」になります。
+                let btnClass = "w-full py-1.5 flex flex-col items-center justify-center rounded-lg text-xs transition ";
+                
                 if (isSelected) {
                     btnClass += "bg-indigo-600 text-white font-bold shadow-md shadow-indigo-600/30";
                 } else if (hasData) {
@@ -912,7 +920,7 @@ function updateUI() {
                     </button>
                 `;
             }
-            calendarHtml += `</div>`;
+            calendarHtml += `</div></div>`;
             calendarContainer.innerHTML = calendarHtml;
         }
         
